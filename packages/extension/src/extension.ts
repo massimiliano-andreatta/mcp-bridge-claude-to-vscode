@@ -3,6 +3,10 @@ import { BidiHttpTransport } from "./bidi-http-transport";
 import { registerVSCodeCommands } from "./commands";
 import { createMcpServer, extensionDisplayName } from "./mcp-server";
 import { DIFF_VIEW_URI_SCHEME } from "./utils/DiffViewProvider";
+import { AutoApprovalWebViewProvider } from "./utils/AutoApprovalWebViewProvider";
+import { MainPanelViewProvider } from "./utils/MainPanelViewProvider";
+import { AutoApprovalManager } from "./utils/AutoApprovalManager";
+import { ServerLifecycleManager } from "./utils/ServerLifecycleManager";
 
 // MCP Bridge のステータスを表示するステータスバーアイテム
 let serverStatusBarItem: vscode.StatusBarItem;
@@ -14,26 +18,32 @@ function updateServerStatusBar(status: "running" | "stopped" | "starting" | "too
     return;
   }
 
+  // Get auto-approval status
+  const autoApprovalManager = AutoApprovalManager.getInstance();
+  const config = vscode.workspace.getConfiguration("mcpBridgeC2V");
+  const autoApprovalEnabled = config.get("autoApproval.enabled", false);
+  const autoApprovalIcon = autoApprovalEnabled ? "$(shield)" : "$(shield-x)";
+
   switch (status) {
     case "running":
-      serverStatusBarItem.text = "$(server) MCP Bridge";
-      serverStatusBarItem.tooltip = "MCP Bridge is running";
+      serverStatusBarItem.text = `$(server) MCP Bridge ${autoApprovalIcon}`;
+      serverStatusBarItem.tooltip = `MCP Bridge is running\n${autoApprovalManager.getStatusDescription()}`;
       serverStatusBarItem.command = "mcpBridgeC2V.stopServer";
       break;
     case "starting":
-      serverStatusBarItem.text = "$(sync~spin) MCP Bridge";
+      serverStatusBarItem.text = `$(sync~spin) MCP Bridge ${autoApprovalIcon}`;
       serverStatusBarItem.tooltip = "Starting...";
       serverStatusBarItem.command = undefined;
       break;
     case "tool_list_updated":
-      serverStatusBarItem.text = "$(warning) MCP Bridge";
-      serverStatusBarItem.tooltip = "Tool list updated - Restart MCP Client";
+      serverStatusBarItem.text = `$(warning) MCP Bridge ${autoApprovalIcon}`;
+      serverStatusBarItem.tooltip = `Tool list updated - Restart MCP Client\n${autoApprovalManager.getStatusDescription()}`;
       serverStatusBarItem.command = "mcpBridgeC2V.stopServer";
       break;
     case "stopped":
     default:
-      serverStatusBarItem.text = "$(circle-slash) MCP Bridge";
-      serverStatusBarItem.tooltip = "MCP Bridge is not running";
+      serverStatusBarItem.text = `$(circle-slash) MCP Bridge ${autoApprovalIcon}`;
+      serverStatusBarItem.tooltip = `MCP Bridge is not running\n${autoApprovalManager.getStatusDescription()}`;
       serverStatusBarItem.command = "mcpBridgeC2V.toggleActiveStatus";
       break;
   }
@@ -41,23 +51,32 @@ function updateServerStatusBar(status: "running" | "stopped" | "starting" | "too
 }
 
 export const activate = async (context: vscode.ExtensionContext) => {
-  console.log("LMLMLM", vscode.lm.tools);
-
   // Create the output channel for logging
   const outputChannel = vscode.window.createOutputChannel(extensionDisplayName);
   outputChannel.appendLine(`Activating ${extensionDisplayName}...`);
 
-  // Initialize the MCP Bridge instance
   const mcpBridgeC2V = createMcpServer(outputChannel);
+
+  // Register Main Panel WebView Provider
+  const mainPanelProvider = new MainPanelViewProvider(context.extensionUri);
+  context.subscriptions.push(vscode.window.registerWebviewViewProvider(MainPanelViewProvider.viewType, mainPanelProvider));
+
+  // Get the singleton instance of ServerLifecycleManager
+  const lifecycleManager = ServerLifecycleManager.getInstance(outputChannel, mainPanelProvider);
 
   // Create status bar item
   serverStatusBarItem = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Right, 100);
   context.subscriptions.push(serverStatusBarItem);
 
+  // Register Auto-Approval WebView Provider
+  const autoApprovalProvider = new AutoApprovalWebViewProvider(context.extensionUri);
+  context.subscriptions.push(vscode.window.registerWebviewViewProvider(AutoApprovalWebViewProvider.viewType, autoApprovalProvider));
+
   // Server start function
   async function startServer(port: number) {
     outputChannel.appendLine(`DEBUG: Starting MCP Bridge on port ${port}...`);
     transport = new BidiHttpTransport(port, outputChannel);
+    lifecycleManager.registerTransport(transport); // Register transport with lifecycle manager
     // サーバー状態変更のイベントハンドラを設定
     transport.onServerStatusChanged = (status) => {
       updateServerStatusBar(status);
@@ -93,6 +112,12 @@ export const activate = async (context: vscode.ExtensionContext) => {
   outputChannel.appendLine(`${extensionDisplayName} activated.`);
 };
 
-export function deactivate() {
+export async function deactivate() {
+  // Graceful shutdown usando il ServerLifecycleManager
+  try {
+    const lifecycleManager = ServerLifecycleManager.getInstance();
+    await lifecycleManager.shutdown();
+  } catch (error) {}
+
   // Clean-up is managed by the disposables added in the activate method.
 }

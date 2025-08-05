@@ -1,0 +1,35 @@
+{
+  "mcpBridgeC2V.autoApproval": {
+    "enabled": false,
+    "permissions": {
+      "read": {
+        "enabled": false,
+        "includeOutsideWorkspace": false
+      },
+      "write": {
+        "enabled": false,
+        "includeOutsideWorkspace": false,
+        "includeProtectedFiles": false
+      },
+      "execute": {
+        "enabled": false,
+        "allowedCommands": []
+      },
+      "debug": {
+        "enabled": false
+      },
+      "terminal": {
+        "enabled": false
+      },
+      "browser": {
+        "enabled": false
+      }
+    },
+    "limits": {
+      "maxRequests": 100,
+      "timeWindowMinutes": 60,
+      "retryDelaySeconds": 10,
+      "requestTimeoutSeconds": 60
+    }
+  }
+}
