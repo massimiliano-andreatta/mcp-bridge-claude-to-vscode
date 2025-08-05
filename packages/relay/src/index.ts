@@ -51,22 +51,17 @@ class MCPRelay {
 
       // Compare the fetched tools with the cached ones
       if (cachedTools && cachedTools.length === tools.length) {
-        console.error("Fetched tools list is the same as the cached one, not updating cache");
-        return { tools: cachedTools };
+        return;
       }
 
       // Notify to user that tools have been updated and restart the client
       try {
         await this.requestWithRetry(this.serverUrl + "/notify-tools-updated", "");
-      } catch (err) {
-        console.error(`Failed to notify tools updated: ${(err as Error).message}`);
-      }
+      } catch (err) {}
 
       try {
         await this.saveToolsCache(tools);
-      } catch (cacheErr) {
-        console.error(`Failed to cache tools response: ${(cacheErr as Error).message}`);
-      }
+      } catch (cacheErr) {}
     }, 30000); // every 30 seconds
 
     this.mcpServer.server.setRequestHandler(ListToolsRequestSchema, async (request): Promise<ListToolsResult> => {
@@ -86,16 +81,13 @@ class MCPRelay {
         const parsedResponse = response as JSONRPCResponse;
         tools = parsedResponse.result.tools as any[];
       } catch (err) {
-        console.error(`Failed to fetch tools list: ${(err as Error).message}`);
         return { tools: cachedTools as any[] };
       }
 
       // Update cache
       try {
         await this.saveToolsCache(tools);
-      } catch (cacheErr) {
-        console.error(`Failed to cache tools response: ${(cacheErr as Error).message}`);
-      }
+      } catch (cacheErr) {}
 
       return { tools };
     });
@@ -114,7 +106,6 @@ class MCPRelay {
         const parsedResponse = response as JSONRPCResponse;
         return parsedResponse.result as any;
       } catch (e) {
-        console.error(`Failed to call tool: ${(e as Error).message}`);
         return {
           isError: true,
           content: [
@@ -138,9 +129,7 @@ class MCPRelay {
           throw err;
         }
       }
-    } catch (err) {
-      console.error(`Failed to initialize cache directory: ${(err as Error).message}`);
-    }
+    } catch (err) {}
   }
 
   // キャッシュの保存
@@ -148,9 +137,8 @@ class MCPRelay {
     await this.initCacheDir();
     try {
       await fs.writeFile(TOOLS_CACHE_FILE, JSON.stringify(tools), "utf8");
-      console.error("Tools list cache saved");
     } catch (err) {
-      console.error(`Failed to save cache: ${(err as Error).message}`);
+      // Fail silently
     }
   }
 
@@ -160,7 +148,6 @@ class MCPRelay {
       const cacheData = await fs.readFile(TOOLS_CACHE_FILE, "utf8");
       return JSON.parse(cacheData) as any[];
     } catch (err) {
-      console.error(`Failed to load cache file: ${(err as Error).message}`);
       return null;
     }
   }
@@ -170,7 +157,6 @@ class MCPRelay {
 
     for (let attempt = 0; attempt < MAX_RETRIES; attempt++) {
       if (attempt > 0) {
-        console.error(`Retry attempt ${attempt + 1}/${MAX_RETRIES}`);
         await new Promise((resolve) => setTimeout(resolve, RETRY_INTERVAL));
       }
 
@@ -216,7 +202,6 @@ function parseArgs() {
       i++;
     }
   }
-
   return { serverUrl };
 }
 
@@ -225,6 +210,5 @@ try {
   const relay = new MCPRelay(serverUrl);
   await relay.start();
 } catch (err) {
-  console.error(`Fatal error: ${(err as Error).message}`);
   process.exit(1);
 }
