@@ -79,3 +79,4 @@ echo "✅ Processo di release completato!"
 echo "  - Relay versione $NEW_VERSION pubblicato e installato globalmente."
 echo "  - Estensione versione $NEW_EXT_VERSION pacchettizzata."
 echo "  - Gli artefatti sono disponibili in 'release_assets/'."
+
