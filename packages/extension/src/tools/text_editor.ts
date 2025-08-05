@@ -5,7 +5,7 @@ import { DiffViewProvider } from "../utils/DiffViewProvider";
 import { ConfirmationUI } from "../utils/confirmation_ui";
 import { OperationType, OperationContext } from "../utils/AutoApprovalManager";
 
-// Zodスキーマ定義
+// Zod schema definition
 export const textEditorSchema = z.object({
   command: z.enum(["view", "str_replace", "create", "insert", "undo_edit"]),
   path: z.string().describe("File path to operate on"),
@@ -24,7 +24,7 @@ interface TextEditorResult {
   isError?: boolean;
 }
 
-// バックアップと差分表示を管理するクラス
+// Class to manage backups and diff views
 class EditorManager {
   private static instance: EditorManager;
   private diffViewProvider: DiffViewProvider;
@@ -42,7 +42,7 @@ class EditorManager {
     return EditorManager.instance;
   }
 
-  // パスを解決する
+  // Resolve path
   private resolvePath(filePath: string): string {
     console.log("EditorManager: Resolving path:", filePath);
     if (path.isAbsolute(filePath)) {
@@ -57,14 +57,14 @@ class EditorManager {
     return path.resolve(filePath);
   }
 
-  // ファイルのURIを取得
+  // Get file URI
   private getFileUri(filePath: string): vscode.Uri {
     const resolvedPath = this.resolvePath(filePath);
     console.log("EditorManager: Getting file URI:", resolvedPath);
     return vscode.Uri.file(resolvedPath);
   }
 
-  // 確認プロンプトを表示する
+  // Show confirmation prompt
   private async showPersistentConfirmation(message: string, approveLabel: string, denyLabel: string, filePath?: string, operationType?: OperationType): Promise<{ approved: boolean; feedback?: string }> {
     try {
       const editor = vscode.window.activeTextEditor;
@@ -85,12 +85,12 @@ class EditorManager {
         };
       }
 
-      // ConfirmationUI を使用して確認
+      // Confirm using ConfirmationUI
       const result = await ConfirmationUI.confirm(message, "", approveLabel, denyLabel, operationContext);
       if (result === "Approve") {
         return { approved: true };
       } else {
-        // "Deny"以外の場合はユーザーフィードバックとして扱う
+        // Treat anything other than "Deny" as user feedback
         return {
           approved: false,
           feedback: result !== "Deny" ? result : undefined,
@@ -102,7 +102,7 @@ class EditorManager {
     }
   }
 
-  // 親ディレクトリを作成
+  // Create parent directory
   private async ensureParentDirectory(filePath: string): Promise<void> {
     console.log("EditorManager: Ensuring parent directory exists:", filePath);
     const uri = this.getFileUri(filePath);
@@ -112,7 +112,7 @@ class EditorManager {
     try {
       await vscode.workspace.fs.stat(parentUri);
     } catch {
-      // 親ディレクトリが存在しない場合は作成
+      // If the parent directory does not exist, create it
       console.log("EditorManager: Creating parent directory:", parentDir);
       await vscode.workspace.fs.createDirectory(parentUri);
     }
@@ -250,7 +250,7 @@ class EditorManager {
         };
       }
 
-      // 置換を実行
+      // Perform replacement
       console.log("EditorManager: Reading file content");
       const doc = await vscode.workspace.openTextDocument(uri);
       const content = doc.getText();
@@ -270,21 +270,21 @@ class EditorManager {
 
       console.log("EditorManager: Content length - Original:", content.length, "New:", newContent.length);
 
-      // 重要: 先に editType を設定してから open を呼び出す
+      // Important: Set editType before calling open
       this.diffViewProvider.editType = "modify";
 
-      // DiffViewProviderを使用してファイルを開く
+      // Open the file using DiffViewProvider
       console.log("EditorManager: Opening file in DiffViewProvider");
       if (!this.diffViewProvider.isEditing) {
         await this.diffViewProvider.open(uri.fsPath);
       }
 
-      // 変更を適用
+      // Apply changes
       console.log("EditorManager: Updating content in DiffViewProvider");
       await this.diffViewProvider.update(newContent, true);
       await this.diffViewProvider.scrollToFirstDiff();
 
-      // テスト実行時はダイアログをスキップ
+      // Skip dialog during test execution
       console.log("EditorManager: Checking approval");
       let confirmResult;
       if (skipDialog) {
@@ -297,7 +297,7 @@ class EditorManager {
         console.log("EditorManager: Changes rejected");
         await this.diffViewProvider.revertChanges();
 
-        // ユーザーがフィードバックを提供した場合はそれを含める
+        // Include user feedback if provided
         const feedbackMessage = confirmResult.feedback ? `Changes were rejected by the user with feedback: ${confirmResult.feedback}` : "Changes were rejected by the user";
 
         return {
@@ -309,7 +309,7 @@ class EditorManager {
       console.log("EditorManager: Saving changes");
       const { newProblemsMessage, userEdits, userFeedback } = await this.diffViewProvider.saveChanges();
 
-      // フィードバックの有無に応じてコンテンツを整形
+      // Format content based on whether feedback is present
       const feedbackText = userFeedback ? `\nUser feedback: ${userFeedback}` : "";
 
       if (userEdits) {
@@ -356,14 +356,14 @@ class EditorManager {
           isError: true,
         };
       } catch {
-        // ファイルが存在しない場合は続行
+        // If the file does not exist, continue
       }
 
-      // 親ディレクトリを作成
+      // Create parent directory
       console.log("EditorManager: Creating parent directory");
       await this.ensureParentDirectory(filePath);
 
-      // 重要: 先に editType を設定してから open を呼び出す
+      // Important: Set editType before calling open
       this.diffViewProvider.editType = "create";
 
       console.log("EditorManager: Opening file in DiffViewProvider");
@@ -376,7 +376,7 @@ class EditorManager {
       await this.diffViewProvider.update(fileText, true);
       await this.diffViewProvider.scrollToFirstDiff();
 
-      // テスト実行時はダイアログをスキップ
+      // Skip dialog during test execution
       console.log("EditorManager: Checking approval");
       let confirmResult;
       if (skipDialog) {
@@ -389,7 +389,7 @@ class EditorManager {
         console.log("EditorManager: File creation cancelled");
         await this.diffViewProvider.revertChanges();
 
-        // ユーザーがフィードバックを提供した場合はそれを含める
+        // Include user feedback if provided
         const feedbackMessage = confirmResult.feedback ? `File creation was cancelled by the user with feedback: ${confirmResult.feedback}` : "File creation was cancelled by the user";
 
         return {
@@ -401,7 +401,7 @@ class EditorManager {
       console.log("EditorManager: Saving changes");
       const { newProblemsMessage, userEdits, userFeedback } = await this.diffViewProvider.saveChanges();
 
-      // フィードバックの有無に応じてコンテンツを整形
+      // Format content based on whether feedback is present
       const feedbackText = userFeedback ? `\nUser feedback: ${userFeedback}` : "";
 
       if (userEdits) {
@@ -455,7 +455,7 @@ class EditorManager {
         };
       }
 
-      // 重要: 先に editType を設定してから open を呼び出す
+      // Important: Set editType before calling open
       this.diffViewProvider.editType = "modify";
 
       console.log("EditorManager: Opening file in DiffViewProvider");
@@ -476,7 +476,7 @@ class EditorManager {
       await this.diffViewProvider.update(newContent, true);
       await this.diffViewProvider.scrollToFirstDiff();
 
-      // テスト実行時はダイアログをスキップ
+      // Skip dialog during test execution
       console.log("EditorManager: Checking approval");
       let confirmResult;
       if (skipDialog) {
@@ -489,7 +489,7 @@ class EditorManager {
         console.log("EditorManager: Text insertion cancelled");
         await this.diffViewProvider.revertChanges();
 
-        // ユーザーがフィードバックを提供した場合はそれを含める
+        // Include user feedback if provided
         const feedbackMessage = confirmResult.feedback ? `Text insertion was cancelled by the user with feedback: ${confirmResult.feedback}` : "Text insertion was cancelled by the user";
 
         return {
@@ -501,7 +501,7 @@ class EditorManager {
       console.log("EditorManager: Saving changes");
       const { newProblemsMessage, userEdits, userFeedback } = await this.diffViewProvider.saveChanges();
 
-      // フィードバックの有無に応じてコンテンツを整形
+      // Format content based on whether feedback is present
       const feedbackText = userFeedback ? `\nUser feedback: ${userFeedback}` : "";
 
       if (userEdits) {
@@ -563,7 +563,7 @@ class EditorManager {
   }
 }
 
-// メインのツールハンドラー
+// Main tool handler
 export async function textEditorTool(params: TextEditorParams): Promise<TextEditorResult> {
   console.log("textEditorTool: Starting with params:", params);
   const editor = EditorManager.getInstance();
