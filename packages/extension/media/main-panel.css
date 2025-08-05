@@ -1,0 +1,114 @@
+:root {
+    --vscode-foreground: #cccccc;
+    --vscode-editor-background: #1e1e1e;
+    --vscode-button-background: #3c3c3c;
+    --vscode-button-foreground: #ffffff;
+    --vscode-button-hoverBackground: #4c4c4c;
+    --vscode-input-background: #3c3c3c;
+    --vscode-input-foreground: #cccccc;
+    --vscode-textLink-foreground: #3794ff;
+    --vscode-panel-border: #444444;
+}
+
+body, html {
+    margin: 0;
+    padding: 0;
+    font-family: var(--vscode-font-family, Arial, sans-serif);
+    font-size: var(--vscode-font-size, 13px);
+    color: var(--vscode-foreground);
+    background-color: var(--vscode-editor-background);
+    height: 100%;
+}
+
+.container {
+    padding: 15px;
+    display: flex;
+    flex-direction: column;
+    height: calc(100% - 30px);
+}
+
+.header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 15px;
+}
+
+.header h1 {
+    font-size: 1.5em;
+    margin: 0;
+}
+
+.version-badge {
+    background-color: #333;
+    color: #888;
+    padding: 3px 8px;
+    border-radius: 10px;
+    font-size: 0.8em;
+}
+
+.auto-approval-section {
+    border: 1px solid var(--vscode-panel-border);
+    border-radius: 5px;
+    margin-bottom: 15px;
+}
+
+.auto-approval-header {
+    display: flex;
+    align-items: center;
+    padding: 10px;
+    cursor: pointer;
+}
+
+.auto-approval-header input[type="checkbox"] {
+    margin-right: 10px;
+}
+
+.auto-approval-header .chevron {
+    margin-left: auto;
+    border: solid var(--vscode-foreground);
+    border-width: 0 2px 2px 0;
+    display: inline-block;
+    padding: 3px;
+    transform: rotate(45deg);
+    transition: transform 0.2s;
+}
+
+.auto-approval-body {
+    padding: 0 15px 15px 15px;
+    display: none; /* Hidden by default */
+}
+
+.auto-approval-body p {
+    margin-top: 0;
+}
+
+.auto-approval-body a {
+    color: var(--vscode-textLink-foreground);
+    text-decoration: none;
+}
+
+.buttons-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
+    gap: 8px;
+}
+
+.buttons-grid button {
+    background-color: var(--vscode-button-background);
+    color: var(--vscode-button-foreground);
+    border: none;
+    padding: 8px;
+    border-radius: 3px;
+    cursor: pointer;
+    text-align: center;
+}
+
+.buttons-grid button:hover {
+    background-color: var(--vscode-button-hoverBackground);
+}
+
+.buttons-grid button.active {
+    background-color: var(--vscode-button-hoverBackground);
+    border: 1px solid var(--vscode-textLink-foreground);
+}

@@ -3,16 +3,15 @@ import { BidiHttpTransport } from "./bidi-http-transport";
 import { registerVSCodeCommands } from "./commands";
 import { createMcpServer, extensionDisplayName } from "./mcp-server";
 import { DIFF_VIEW_URI_SCHEME } from "./utils/DiffViewProvider";
-import { AutoApprovalWebViewProvider } from "./utils/AutoApprovalWebViewProvider";
 import { MainPanelViewProvider } from "./utils/MainPanelViewProvider";
 import { AutoApprovalManager } from "./utils/AutoApprovalManager";
 import { ServerLifecycleManager } from "./utils/ServerLifecycleManager";
 
-// MCP Bridge のステータスを表示するステータスバーアイテム
+// Status bar item to display the status of the MCP Bridge
 let serverStatusBarItem: vscode.StatusBarItem;
 let transport: BidiHttpTransport;
 
-// ステータスバーを更新する関数
+// Function to update the status bar
 function updateServerStatusBar(status: "running" | "stopped" | "starting" | "tool_list_updated") {
   if (!serverStatusBarItem) {
     return;
@@ -68,16 +67,12 @@ export const activate = async (context: vscode.ExtensionContext) => {
   serverStatusBarItem = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Right, 100);
   context.subscriptions.push(serverStatusBarItem);
 
-  // Register Auto-Approval WebView Provider
-  const autoApprovalProvider = new AutoApprovalWebViewProvider(context.extensionUri);
-  context.subscriptions.push(vscode.window.registerWebviewViewProvider(AutoApprovalWebViewProvider.viewType, autoApprovalProvider));
-
   // Server start function
   async function startServer(port: number) {
     outputChannel.appendLine(`DEBUG: Starting MCP Bridge on port ${port}...`);
     transport = new BidiHttpTransport(port, outputChannel);
     lifecycleManager.registerTransport(transport); // Register transport with lifecycle manager
-    // サーバー状態変更のイベントハンドラを設定
+    // Set the event handler for server status changes
     transport.onServerStatusChanged = (status) => {
       updateServerStatusBar(status);
     };
@@ -93,7 +88,7 @@ export const activate = async (context: vscode.ExtensionContext) => {
     }
   })();
 
-  // DiffViewProvider の URI スキームを mcp-diff に変更
+  // Change the URI scheme of the DiffViewProvider to mcp-diff
   context.subscriptions.push(vscode.workspace.registerTextDocumentContentProvider(DIFF_VIEW_URI_SCHEME, diffContentProvider));
 
   // Start server if configured to do so

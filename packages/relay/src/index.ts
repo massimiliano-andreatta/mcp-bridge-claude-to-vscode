@@ -118,10 +118,10 @@ class MCPRelay {
       }
     });
   }
-  // キャッシュディレクトリの初期化
+  // Initialize cache directory
   async initCacheDir(): Promise<void> {
     try {
-      // ディレクトリが存在しない場合は作成
+      // Create directory if it doesn't exist
       try {
         await fs.mkdir(CACHE_DIR, { recursive: true });
       } catch (err) {
@@ -132,7 +132,7 @@ class MCPRelay {
     } catch (err) {}
   }
 
-  // キャッシュの保存
+  // Save cache
   async saveToolsCache(tools: any[]): Promise<void> {
     await this.initCacheDir();
     try {
@@ -191,7 +191,7 @@ class MCPRelay {
   }
 }
 
-// コマンドライン引数の解析
+// Parse command line arguments
 function parseArgs() {
   const args = process.argv.slice(2);
   let serverUrl = "http://localhost:60100";

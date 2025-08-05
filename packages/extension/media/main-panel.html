@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="main-panel.css">
+    <title>MCP Bridge Control Panel</title>
+</head>
+<body>
+    <div class="container">
+        <!-- Header -->
+        <div class="header">
+            <h1>MCP BRIDGE</h1>
+            <div class="version-badge">v0.0.1</div>
+        </div>
+
+        <!-- Auto-Approval Section -->
+        <div class="auto-approval-section">
+            <div class="auto-approval-header">
+                <input type="checkbox" id="auto-approve-checkbox">
+                <label for="auto-approve-checkbox">Auto-approvazione: Leggi, Scrivi, Esegui, ...</label>
+                <span class="chevron"></span>
+            </div>
+            <div class="auto-approval-body">
+                <p>L'auto-approvazione permette a MCP Bridge di eseguire azioni senza chiedere permesso. Abilita solo per azioni di cui ti fidi completamente..</p>
+                <div class="buttons-grid">
+                    <button data-permission-key="execute">Esegui</button>
+                    <button data-permission-key="read">Leggi</button>
+                    <button data-permission-key="write">Scrivi</button>
+                    <button data-permission-key="browser">Browser</button>
+                </div>
+            </div>
+        </div>
+
+    </div>
+    <script src="main-panel.js"></script>
+</body>
+</html>

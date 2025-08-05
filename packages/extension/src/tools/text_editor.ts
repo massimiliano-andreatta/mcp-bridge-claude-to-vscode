@@ -9,34 +9,12 @@ import { OperationType, OperationContext } from "../utils/AutoApprovalManager";
 export const textEditorSchema = z.object({
   command: z.enum(["view", "str_replace", "create", "insert", "undo_edit"]),
   path: z.string().describe("File path to operate on"),
-  view_range: z
-    .tuple([z.number(), z.number()])
-    .optional()
-    .describe(
-      "Optional [start, end] line numbers for view command (1-indexed, -1 for end)"
-    ),
-  old_str: z
-    .string()
-    .optional()
-    .describe("Text to replace (required for str_replace command)"),
-  new_str: z
-    .string()
-    .optional()
-    .describe(
-      "New text to insert (required for str_replace and insert commands)"
-    ),
-  file_text: z
-    .string()
-    .optional()
-    .describe("Content for new file (required for create command)"),
-  insert_line: z
-    .number()
-    .optional()
-    .describe("Line number to insert after (required for insert command)"),
-  skip_dialog: z
-    .boolean()
-    .optional()
-    .describe("Skip confirmation dialog (for testing only)"),
+  view_range: z.tuple([z.number(), z.number()]).optional().describe("Optional [start, end] line numbers for view command (1-indexed, -1 for end)"),
+  old_str: z.string().optional().describe("Text to replace (required for str_replace command)"),
+  new_str: z.string().optional().describe("New text to insert (required for str_replace and insert commands)"),
+  file_text: z.string().optional().describe("Content for new file (required for create command)"),
+  insert_line: z.number().optional().describe("Line number to insert after (required for insert command)"),
+  skip_dialog: z.boolean().optional().describe("Skip confirmation dialog (for testing only)"),
 });
 
 type TextEditorParams = z.infer<typeof textEditorSchema>;
@@ -53,8 +31,7 @@ class EditorManager {
 
   private constructor() {
     console.log("EditorManager: Initializing...");
-    const workspaceRoot =
-      vscode.workspace.workspaceFolders?.[0]?.uri.fsPath || process.cwd();
+    const workspaceRoot = vscode.workspace.workspaceFolders?.[0]?.uri.fsPath || process.cwd();
     this.diffViewProvider = new DiffViewProvider(workspaceRoot);
   }
 
@@ -88,13 +65,7 @@ class EditorManager {
   }
 
   // 確認プロンプトを表示する
-  private async showPersistentConfirmation(
-    message: string,
-    approveLabel: string,
-    denyLabel: string,
-    filePath?: string,
-    operationType?: OperationType
-  ): Promise<{ approved: boolean; feedback?: string }> {
+  private async showPersistentConfirmation(message: string, approveLabel: string, denyLabel: string, filePath?: string, operationType?: OperationType): Promise<{ approved: boolean; feedback?: string }> {
     try {
       const editor = vscode.window.activeTextEditor;
       if (!editor) {
@@ -115,13 +86,7 @@ class EditorManager {
       }
 
       // ConfirmationUI を使用して確認
-      const result = await ConfirmationUI.confirm(
-        message,
-        "",
-        approveLabel,
-        denyLabel,
-        operationContext
-      );
+      const result = await ConfirmationUI.confirm(message, "", approveLabel, denyLabel, operationContext);
       if (result === "Approve") {
         return { approved: true };
       } else {
@@ -153,23 +118,27 @@ class EditorManager {
     }
   }
 
-  async viewFile(
-    filePath: string,
-    viewRange?: [number, number]
-  ): Promise<TextEditorResult> {
+  async viewFile(filePath: string, viewRange?: [number, number]): Promise<TextEditorResult> {
     console.log("EditorManager: Viewing file:", filePath);
     try {
       const uri = this.getFileUri(filePath);
+
+      // Add confirmation for reading files
+      const confirmResult = await this.showPersistentConfirmation(`Do you want to view the file at "${filePath}"?`, "View File", "Cancel", uri.fsPath, OperationType.READ);
+
+      if (!confirmResult.approved) {
+        return {
+          content: [{ type: "text", text: "File view cancelled by user." }],
+          isError: true,
+        };
+      }
 
       try {
         const stat = await vscode.workspace.fs.stat(uri);
 
         // Check if the path is a directory
         if (stat.type === vscode.FileType.Directory) {
-          console.log(
-            "EditorManager: Path is a directory, listing contents:",
-            uri.fsPath
-          );
+          console.log("EditorManager: Path is a directory, listing contents:", uri.fsPath);
 
           try {
             const entries = await vscode.workspace.fs.readDirectory(uri);
@@ -212,10 +181,7 @@ class EditorManager {
               isError: false,
             };
           } catch (dirError) {
-            const errorMessage =
-              dirError instanceof Error
-                ? dirError.message
-                : "Unknown directory reading error occurred";
+            const errorMessage = dirError instanceof Error ? dirError.message : "Unknown directory reading error occurred";
             return {
               content: [
                 {
@@ -246,10 +212,7 @@ class EditorManager {
         const [start, end] = viewRange;
         const startLine = Math.max(0, start - 1); // 1-indexed to 0-indexed
         const endLine = end === -1 ? doc.lineCount : end;
-        const range = new vscode.Range(
-          new vscode.Position(startLine, 0),
-          new vscode.Position(endLine, 0)
-        );
+        const range = new vscode.Range(new vscode.Position(startLine, 0), new vscode.Position(endLine, 0));
         content = doc.getText(range);
       } else {
         content = doc.getText();
@@ -260,23 +223,15 @@ class EditorManager {
         isError: false,
       };
     } catch (error) {
-      const errorMessage =
-        error instanceof Error ? error.message : "Unknown error occurred";
+      const errorMessage = error instanceof Error ? error.message : "Unknown error occurred";
       return {
-        content: [
-          { type: "text", text: `Error reading file: ${errorMessage}` },
-        ],
+        content: [{ type: "text", text: `Error reading file: ${errorMessage}` }],
         isError: true,
       };
     }
   }
 
-  async replaceText(
-    filePath: string,
-    oldStr: string,
-    newStr: string,
-    skipDialog?: boolean
-  ): Promise<TextEditorResult> {
+  async replaceText(filePath: string, oldStr: string, newStr: string, skipDialog?: boolean): Promise<TextEditorResult> {
     console.log("EditorManager: Replacing text in file:", filePath);
     try {
       const uri = this.getFileUri(filePath);
@@ -311,19 +266,9 @@ class EditorManager {
         };
       }
       const newContent = content.replaceAll(oldStr, newStr);
-      console.log(
-        "EditorManager: Text replacement - Old:",
-        oldStr,
-        "New:",
-        newStr
-      );
+      console.log("EditorManager: Text replacement - Old:", oldStr, "New:", newStr);
 
-      console.log(
-        "EditorManager: Content length - Original:",
-        content.length,
-        "New:",
-        newContent.length
-      );
+      console.log("EditorManager: Content length - Original:", content.length, "New:", newContent.length);
 
       // 重要: 先に editType を設定してから open を呼び出す
       this.diffViewProvider.editType = "modify";
@@ -345,13 +290,7 @@ class EditorManager {
       if (skipDialog) {
         confirmResult = { approved: true };
       } else {
-        confirmResult = await this.showPersistentConfirmation(
-          "Do you want to apply these changes?",
-          "Apply Changes",
-          "Discard Changes",
-          uri.fsPath,
-          OperationType.WRITE
-        );
+        confirmResult = await this.showPersistentConfirmation("Do you want to apply these changes?", "Apply Changes", "Discard Changes", uri.fsPath, OperationType.WRITE);
       }
 
       if (!confirmResult.approved) {
@@ -359,9 +298,7 @@ class EditorManager {
         await this.diffViewProvider.revertChanges();
 
         // ユーザーがフィードバックを提供した場合はそれを含める
-        const feedbackMessage = confirmResult.feedback
-          ? `Changes were rejected by the user with feedback: ${confirmResult.feedback}`
-          : "Changes were rejected by the user";
+        const feedbackMessage = confirmResult.feedback ? `Changes were rejected by the user with feedback: ${confirmResult.feedback}` : "Changes were rejected by the user";
 
         return {
           content: [{ type: "text", text: feedbackMessage }],
@@ -370,22 +307,17 @@ class EditorManager {
       }
 
       console.log("EditorManager: Saving changes");
-      const { newProblemsMessage, userEdits, userFeedback } =
-        await this.diffViewProvider.saveChanges();
+      const { newProblemsMessage, userEdits, userFeedback } = await this.diffViewProvider.saveChanges();
 
       // フィードバックの有無に応じてコンテンツを整形
-      const feedbackText = userFeedback
-        ? `\nUser feedback: ${userFeedback}`
-        : "";
+      const feedbackText = userFeedback ? `\nUser feedback: ${userFeedback}` : "";
 
       if (userEdits) {
         return {
           content: [
             {
               type: "text",
-              text: `User modified the changes. Please review the updated content.${
-                newProblemsMessage || ""
-              }${feedbackText}`,
+              text: `User modified the changes. Please review the updated content.${newProblemsMessage || ""}${feedbackText}`,
             },
           ],
         };
@@ -395,21 +327,16 @@ class EditorManager {
         content: [
           {
             type: "text",
-            text: `Text replacement completed successfully${
-              newProblemsMessage || ""
-            }${feedbackText}`,
+            text: `Text replacement completed successfully${newProblemsMessage || ""}${feedbackText}`,
           },
         ],
       };
     } catch (error) {
       console.error("EditorManager: Error in replaceText:", error);
       await this.diffViewProvider.revertChanges();
-      const errorMessage =
-        error instanceof Error ? error.message : "Unknown error occurred";
+      const errorMessage = error instanceof Error ? error.message : "Unknown error occurred";
       return {
-        content: [
-          { type: "text", text: `Error replacing text: ${errorMessage}` },
-        ],
+        content: [{ type: "text", text: `Error replacing text: ${errorMessage}` }],
         isError: true,
       };
     } finally {
@@ -417,11 +344,7 @@ class EditorManager {
     }
   }
 
-  async createFile(
-    filePath: string,
-    fileText: string,
-    skipDialog?: boolean
-  ): Promise<TextEditorResult> {
+  async createFile(filePath: string, fileText: string, skipDialog?: boolean): Promise<TextEditorResult> {
     console.log("EditorManager: Creating file:", filePath);
     try {
       const uri = this.getFileUri(filePath);
@@ -459,13 +382,7 @@ class EditorManager {
       if (skipDialog) {
         confirmResult = { approved: true };
       } else {
-        confirmResult = await this.showPersistentConfirmation(
-          "Do you want to create this file?",
-          "Apply Changes",
-          "Discard Changes",
-          uri.fsPath,
-          OperationType.WRITE
-        );
+        confirmResult = await this.showPersistentConfirmation("Do you want to create this file?", "Apply Changes", "Discard Changes", uri.fsPath, OperationType.WRITE);
       }
 
       if (!confirmResult.approved) {
@@ -473,9 +390,7 @@ class EditorManager {
         await this.diffViewProvider.revertChanges();
 
         // ユーザーがフィードバックを提供した場合はそれを含める
-        const feedbackMessage = confirmResult.feedback
-          ? `File creation was cancelled by the user with feedback: ${confirmResult.feedback}`
-          : "File creation was cancelled by the user";
+        const feedbackMessage = confirmResult.feedback ? `File creation was cancelled by the user with feedback: ${confirmResult.feedback}` : "File creation was cancelled by the user";
 
         return {
           content: [{ type: "text", text: feedbackMessage }],
@@ -484,22 +399,17 @@ class EditorManager {
       }
 
       console.log("EditorManager: Saving changes");
-      const { newProblemsMessage, userEdits, userFeedback } =
-        await this.diffViewProvider.saveChanges();
+      const { newProblemsMessage, userEdits, userFeedback } = await this.diffViewProvider.saveChanges();
 
       // フィードバックの有無に応じてコンテンツを整形
-      const feedbackText = userFeedback
-        ? `\nUser feedback: ${userFeedback}`
-        : "";
+      const feedbackText = userFeedback ? `\nUser feedback: ${userFeedback}` : "";
 
       if (userEdits) {
         return {
           content: [
             {
               type: "text",
-              text: `User modified the new file content. Please review the changes.${
-                newProblemsMessage || ""
-              }${feedbackText}`,
+              text: `User modified the new file content. Please review the changes.${newProblemsMessage || ""}${feedbackText}`,
             },
           ],
         };
@@ -509,21 +419,16 @@ class EditorManager {
         content: [
           {
             type: "text",
-            text: `File created successfully${
-              newProblemsMessage || ""
-            }${feedbackText}`,
+            text: `File created successfully${newProblemsMessage || ""}${feedbackText}`,
           },
         ],
       };
     } catch (error) {
       console.error("EditorManager: Error in createFile:", error);
       await this.diffViewProvider.revertChanges();
-      const errorMessage =
-        error instanceof Error ? error.message : "Unknown error occurred";
+      const errorMessage = error instanceof Error ? error.message : "Unknown error occurred";
       return {
-        content: [
-          { type: "text", text: `Error creating file: ${errorMessage}` },
-        ],
+        content: [{ type: "text", text: `Error creating file: ${errorMessage}` }],
         isError: true,
       };
     } finally {
@@ -531,12 +436,7 @@ class EditorManager {
     }
   }
 
-  async insertText(
-    filePath: string,
-    insertLine: number,
-    newStr: string,
-    skipDialog?: boolean
-  ): Promise<TextEditorResult> {
+  async insertText(filePath: string, insertLine: number, newStr: string, skipDialog?: boolean): Promise<TextEditorResult> {
     console.log("EditorManager: Inserting text in file:", filePath);
     try {
       const uri = this.getFileUri(filePath);
@@ -572,12 +472,7 @@ class EditorManager {
       const newContent = lines.join("\n");
 
       console.log("EditorManager: Updating content in DiffViewProvider");
-      console.log(
-        "EditorManager: Content length - Original:",
-        content.length,
-        "New:",
-        newContent.length
-      );
+      console.log("EditorManager: Content length - Original:", content.length, "New:", newContent.length);
       await this.diffViewProvider.update(newContent, true);
       await this.diffViewProvider.scrollToFirstDiff();
 
@@ -587,13 +482,7 @@ class EditorManager {
       if (skipDialog) {
         confirmResult = { approved: true };
       } else {
-        confirmResult = await this.showPersistentConfirmation(
-          "Do you want to insert this text?",
-          "Apply Changes",
-          "Discard Changes",
-          uri.fsPath,
-          OperationType.WRITE
-        );
+        confirmResult = await this.showPersistentConfirmation("Do you want to insert this text?", "Apply Changes", "Discard Changes", uri.fsPath, OperationType.WRITE);
       }
 
       if (!confirmResult.approved) {
@@ -601,9 +490,7 @@ class EditorManager {
         await this.diffViewProvider.revertChanges();
 
         // ユーザーがフィードバックを提供した場合はそれを含める
-        const feedbackMessage = confirmResult.feedback
-          ? `Text insertion was cancelled by the user with feedback: ${confirmResult.feedback}`
-          : "Text insertion was cancelled by the user";
+        const feedbackMessage = confirmResult.feedback ? `Text insertion was cancelled by the user with feedback: ${confirmResult.feedback}` : "Text insertion was cancelled by the user";
 
         return {
           content: [{ type: "text", text: feedbackMessage }],
@@ -612,22 +499,17 @@ class EditorManager {
       }
 
       console.log("EditorManager: Saving changes");
-      const { newProblemsMessage, userEdits, userFeedback } =
-        await this.diffViewProvider.saveChanges();
+      const { newProblemsMessage, userEdits, userFeedback } = await this.diffViewProvider.saveChanges();
 
       // フィードバックの有無に応じてコンテンツを整形
-      const feedbackText = userFeedback
-        ? `\nUser feedback: ${userFeedback}`
-        : "";
+      const feedbackText = userFeedback ? `\nUser feedback: ${userFeedback}` : "";
 
       if (userEdits) {
         return {
           content: [
             {
               type: "text",
-              text: `User modified the inserted content. Please review the changes.${
-                newProblemsMessage || ""
-              }${feedbackText}`,
+              text: `User modified the inserted content. Please review the changes.${newProblemsMessage || ""}${feedbackText}`,
             },
           ],
         };
@@ -637,21 +519,16 @@ class EditorManager {
         content: [
           {
             type: "text",
-            text: `Text insertion completed successfully${
-              newProblemsMessage || ""
-            }${feedbackText}`,
+            text: `Text insertion completed successfully${newProblemsMessage || ""}${feedbackText}`,
           },
         ],
       };
     } catch (error) {
       console.error("EditorManager: Error in insertText:", error);
       await this.diffViewProvider.revertChanges();
-      const errorMessage =
-        error instanceof Error ? error.message : "Unknown error occurred";
+      const errorMessage = error instanceof Error ? error.message : "Unknown error occurred";
       return {
-        content: [
-          { type: "text", text: `Error inserting text: ${errorMessage}` },
-        ],
+        content: [{ type: "text", text: `Error inserting text: ${errorMessage}` }],
         isError: true,
       };
     } finally {
@@ -675,12 +552,9 @@ class EditorManager {
       };
     } catch (error) {
       console.error("EditorManager: Error in undoEdit:", error);
-      const errorMessage =
-        error instanceof Error ? error.message : "Unknown error occurred";
+      const errorMessage = error instanceof Error ? error.message : "Unknown error occurred";
       return {
-        content: [
-          { type: "text", text: `Error undoing changes: ${errorMessage}` },
-        ],
+        content: [{ type: "text", text: `Error undoing changes: ${errorMessage}` }],
         isError: true,
       };
     } finally {
@@ -690,9 +564,7 @@ class EditorManager {
 }
 
 // メインのツールハンドラー
-export async function textEditorTool(
-  params: TextEditorParams
-): Promise<TextEditorResult> {
+export async function textEditorTool(params: TextEditorParams): Promise<TextEditorResult> {
   console.log("textEditorTool: Starting with params:", params);
   const editor = EditorManager.getInstance();
 
@@ -712,12 +584,7 @@ export async function textEditorTool(
           isError: true,
         };
       }
-      return await editor.replaceText(
-        params.path,
-        params.old_str,
-        params.new_str,
-        params.skip_dialog
-      );
+      return await editor.replaceText(params.path, params.old_str, params.new_str, params.skip_dialog);
     }
     case "create": {
       if (!params.file_text) {
@@ -726,11 +593,7 @@ export async function textEditorTool(
           isError: true,
         };
       }
-      return await editor.createFile(
-        params.path,
-        params.file_text,
-        params.skip_dialog
-      );
+      return await editor.createFile(params.path, params.file_text, params.skip_dialog);
     }
     case "insert": {
       if (params.insert_line === undefined || !params.new_str) {
@@ -744,12 +607,7 @@ export async function textEditorTool(
           isError: true,
         };
       }
-      return await editor.insertText(
-        params.path,
-        params.insert_line,
-        params.new_str,
-        params.skip_dialog
-      );
+      return await editor.insertText(params.path, params.insert_line, params.new_str, params.skip_dialog);
     }
     case "undo_edit": {
       return await editor.undoEdit();

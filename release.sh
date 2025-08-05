@@ -5,6 +5,12 @@ set -e
 
 echo "🚀 Inizio del processo di release..."
 
+# Creazione delle cartelle per gli artefatti di release
+echo "📁 Creazione delle cartelle per gli artefatti di release..."
+mkdir -p release_assets/relay
+mkdir -p release_assets/extension
+echo "  Cartelle create: release_assets/relay, release_assets/extension"
+
 # --- Gestione del Relay ---
 echo ""
 echo "📦 Gestione del relay..."
@@ -26,11 +32,15 @@ npm pack
 
 TGZ_FILE="mcp-bridge-claude-to-vscode-${NEW_VERSION}.tgz"
 
-echo "🌍 Installazione globale del pacchetto del relay ($TGZ_FILE)..."
-npm install -g "./$TGZ_FILE"
+echo "🚚 Spostamento del pacchetto del relay in release_assets/relay..."
+mv "$TGZ_FILE" ../../release_assets/relay/
+echo "  File $TGZ_FILE spostato."
 
-echo "🚀 Pubblicazione del relay su NPM..."
-npm publish
+echo "🌍 Installazione globale del pacchetto del relay..."
+npm install -g "../../release_assets/relay/$TGZ_FILE"
+
+echo "🚀 Pubblicazione del relay su NPM dall'artefatto..."
+npm publish "../../release_assets/relay/$TGZ_FILE"
 
 # Ritorna alla root del progetto
 cd ../..
@@ -48,6 +58,19 @@ echo "  Nuova versione dell'estensione: $NEW_EXT_VERSION"
 echo "📦 Pacchettizzazione dell'estensione..."
 npx pnpm package-extension
 
+# Il nome del pacchetto è definito in package.json
+EXT_NAME=$(node -p "require('./package.json').name")
+VSIX_FILE="${EXT_NAME}-${NEW_EXT_VERSION}.vsix"
+
+echo "🚚 Spostamento del pacchetto dell'estensione in release_assets/extension..."
+if [ -f "$VSIX_FILE" ]; then
+  mv "$VSIX_FILE" ../../release_assets/extension/
+  echo "  File $VSIX_FILE spostato."
+else
+  echo "⚠️  Attenzione: File $VSIX_FILE non trovato nella directory corrente."
+fi
+
+
 # Ritorna alla root del progetto
 cd ../..
 
@@ -55,3 +78,4 @@ echo ""
 echo "✅ Processo di release completato!"
 echo "  - Relay versione $NEW_VERSION pubblicato e installato globalmente."
 echo "  - Estensione versione $NEW_EXT_VERSION pacchettizzata."
+echo "  - Gli artefatti sono disponibili in 'release_assets/'."

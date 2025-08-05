@@ -172,7 +172,7 @@ export class DiffViewProvider {
   async saveChanges(): Promise<{
     newProblemsMessage: string | undefined;
     userEdits: string | undefined;
-    userFeedback: string | undefined; // 新たに追加：ユーザーフィードバックを含めるフィールド
+    userFeedback: string | undefined; // Newly added: field to include user feedback
     finalContent: string | undefined;
   }> {
     if (!this.relPath || !this.newContent || !this.activeDiffEditor) {
@@ -359,7 +359,7 @@ export class DiffViewProvider {
     }
   }
 
-  // アクティブなエディタを取得するメソッド
+  // Method to get the active editor
   getActiveEditor(): vscode.TextEditor {
     if (!this.activeDiffEditor) {
       throw new Error("No active diff editor available");

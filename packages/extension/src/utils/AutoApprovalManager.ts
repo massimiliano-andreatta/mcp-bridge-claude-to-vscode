@@ -58,21 +58,8 @@ export interface OperationContext {
 
 export class AutoApprovalManager {
   private static instance: AutoApprovalManager;
-  private requestCount: Map<string, { count: number; timestamp: number }> =
-    new Map();
-  private readonly protectedFilePatterns = [
-    ".git/**",
-    ".vscode/**",
-    "node_modules/**",
-    "**/.env",
-    "**/.env.*",
-    "**/package-lock.json",
-    "**/yarn.lock",
-    "**/pnpm-lock.yaml",
-    "**/*.key",
-    "**/*.pem",
-    "**/*.p12",
-  ];
+  private requestCount: Map<string, { count: number; timestamp: number }> = new Map();
+  private readonly protectedFilePatterns = [".git/**", ".vscode/**", "node_modules/**", "**/.env", "**/.env.*", "**/package-lock.json", "**/yarn.lock", "**/pnpm-lock.yaml", "**/*.key", "**/*.pem", "**/*.p12"];
 
   private constructor() {}
 
@@ -129,10 +116,7 @@ export class AutoApprovalManager {
 
     return this.protectedFilePatterns.some((pattern) => {
       // Simple pattern matching - could be enhanced with a proper glob library
-      const regexPattern = pattern
-        .replace(/\*\*/g, ".*")
-        .replace(/\*/g, "[^/]*")
-        .replace(/\?/g, ".");
+      const regexPattern = pattern.replace(/\*\*/g, ".*").replace(/\*/g, "[^/]*").replace(/\?/g, ".");
 
       const regex = new RegExp(regexPattern);
       return regex.test(filePath);
@@ -164,8 +148,10 @@ export class AutoApprovalManager {
     const config = this.getConfig();
     const allowedCommands = config.permissions.execute.allowedCommands;
 
+    // If the list is empty, consider it a wildcard allowing all commands.
+    // This makes the "Execute" toggle in the UI work as a simple on/off switch.
     if (allowedCommands.length === 0) {
-      return false;
+      return true;
     }
 
     return allowedCommands.some((allowed) => {
@@ -274,9 +260,6 @@ export class AutoApprovalManager {
    * Open configuration settings
    */
   openSettings(): void {
-    vscode.commands.executeCommand(
-      "workbench.action.openSettings",
-      "mcpBridgeC2V.autoApproval"
-    );
+    vscode.commands.executeCommand("workbench.action.openSettings", "mcpBridgeC2V.autoApproval");
   }
 }

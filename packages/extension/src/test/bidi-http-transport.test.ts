@@ -6,7 +6,7 @@ import * as sinon from "sinon";
 import * as vscode from "vscode";
 import { BidiHttpTransport } from "../bidi-http-transport";
 
-// テスト用のモックとヘルパー関数
+// Mocks and helper functions for testing
 class MockOutputChannel implements vscode.OutputChannel {
   name: string;
   logs: string[] = [];
@@ -39,7 +39,7 @@ class MockOutputChannel implements vscode.OutputChannel {
 }
 
 suite("BidiHttpTransport Test Suite", function () {
-  this.timeout(10000); // 10秒のタイムアウト
+  this.timeout(10000); // 10-second timeout
 
   let transport: BidiHttpTransport;
   let outputChannel: MockOutputChannel;
@@ -47,22 +47,22 @@ suite("BidiHttpTransport Test Suite", function () {
   let mockOnMessage: sinon.SinonStub;
   let testPort: number;
 
-  // テスト用のサーバーをセットアップ
+  // Set up a test server
   async function setupTestServer(port: number): Promise<http.Server> {
     const app = express();
     app.use(express.json());
 
-    // /ping エンドポイント
+    // /ping endpoint
     app.get("/ping", (_req: express.Request, res: express.Response) => {
       res.json({ status: "ok", timestamp: new Date().toISOString() });
     });
 
-    // /request-handover エンドポイント
+    // /request-handover endpoint
     app.post("/request-handover", (_req: express.Request, res: express.Response) => {
       res.json({ success: true });
     });
 
-    // モックサーバーを起動
+    // Start the mock server
     return new Promise((resolve) => {
       const server = app.listen(port, () => {
         resolve(server);
@@ -71,23 +71,23 @@ suite("BidiHttpTransport Test Suite", function () {
   }
 
   setup(async function () {
-    // テスト用のポートを選択
+    // Select a port for testing
     testPort = 6020;
 
-    // モックの設定
+    // Set up mocks
     outputChannel = new MockOutputChannel("Test Output");
     mockOnMessage = sinon.stub();
 
-    // テスト対象のインスタンスを作成
+    // Create an instance of the class under test
     transport = new BidiHttpTransport(testPort, outputChannel as unknown as vscode.OutputChannel);
     transport.onmessage = mockOnMessage;
 
-    // テスト用のサーバーをセットアップ
+    // Set up a test server
     server = await setupTestServer(testPort + 1);
   });
 
   teardown(async function () {
-    // テストのクリーンアップ
+    // Clean up the test
     await transport.close();
     if (server) {
       server.close();
@@ -101,7 +101,7 @@ suite("BidiHttpTransport Test Suite", function () {
   });
 
   test("should fail if the port is already in use", async function () {
-    // 最初のポートで別のサーバーを起動
+    // Start another server on the first port
     const blockingServer = await setupTestServer(testPort);
 
     try {
@@ -121,10 +121,10 @@ suite("BidiHttpTransport Test Suite", function () {
   test("requestHandover should set isServerRunning to true upon successful response", async function () {
     await transport.start();
 
-    // リクエスト前はtrue (start()で設定される)
+    // Before the request, it's true (set by start())
     assert.strictEqual(transport.isServerRunning, true);
 
-    // requestHandoverメソッドのfetchをモック化
+    // Mock the fetch method of requestHandover
     const originalFetch = global.fetch;
 
     // @ts-ignore
@@ -137,22 +137,22 @@ suite("BidiHttpTransport Test Suite", function () {
       } as Response;
     };
 
-    // start()をモック化して、実際にサーバーを再起動しないようにする
+    // Mock start() to avoid actually restarting the server
     const originalStart = transport.start;
     transport.start = async () => {
-      // サーバーが起動したことをシミュレート
+      // Simulate that the server has started
       assert.ok(outputChannel.logs.some((log) => log.includes("Server is now running")));
     };
 
     try {
-      // リクエスト実行
+      // Execute the request
       const result = await transport.requestHandover();
 
-      // 結果のチェック
+      // Check the result
       assert.strictEqual(result, true);
       assert.strictEqual(transport.isServerRunning, true);
     } finally {
-      // モックを元に戻す
+      // Restore the mock
       global.fetch = originalFetch;
       transport.start = originalStart;
     }
@@ -161,7 +161,7 @@ suite("BidiHttpTransport Test Suite", function () {
   test("send should throw an error if no clients are connected", async function () {
     await transport.start();
 
-    // クライアントなしでsendを呼び出す
+    // Call send without a client
     const message: JSONRPCMessage = {
       jsonrpc: "2.0",
       method: "test",
