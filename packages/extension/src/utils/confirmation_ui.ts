@@ -1,5 +1,6 @@
 import * as vscode from "vscode";
 import { StatusBarManager } from "./StatusBarManager";
+import { AutoApprovalManager, OperationContext } from "./AutoApprovalManager";
 
 /**
  * 設定に基づいて確認UIを表示するユーティリティクラス
@@ -24,9 +25,34 @@ export class ConfirmationUI {
    * @param detail 追加の詳細情報（コマンドなど）
    * @param approveLabel 承認ボタンのラベル
    * @param denyLabel 拒否ボタンのラベル
+   * @param operationContext オプション: 自動承認用のオペレーションコンテキスト
    * @returns 承認された場合は "Approve"、拒否された場合は "Deny" または理由テキスト
    */
-  static async confirm(message: string, detail: string, approveLabel: string, denyLabel: string): Promise<string> {
+  static async confirm(
+    message: string,
+    detail: string,
+    approveLabel: string,
+    denyLabel: string,
+    operationContext?: OperationContext
+  ): Promise<string> {
+    // 自動承認チェック
+    if (operationContext) {
+      const autoApprovalManager = AutoApprovalManager.getInstance();
+      if (autoApprovalManager.canAutoApprove(operationContext)) {
+        console.log(
+          `[ConfirmationUI] Auto-approved operation: ${operationContext.operation} - ${operationContext.description}`
+        );
+
+        // ユーザーに自動承認されたことを通知（非侵入的）
+        vscode.window.setStatusBarMessage(
+          `$(check) Auto-approved: ${operationContext.description}`,
+          3000
+        );
+
+        return "Approve";
+      }
+    }
+
     // 設定から確認UI方法を取得
     const config = vscode.workspace.getConfiguration("mcpBridgeC2V");
     const confirmationUI = config.get<string>("confirmationUI", "quickPick");
@@ -34,26 +60,55 @@ export class ConfirmationUI {
     console.log(`[ConfirmationUI] Using ${confirmationUI} UI for confirmation`);
 
     if (confirmationUI === "quickPick") {
-      return await this.showQuickPickConfirmation(message, detail, approveLabel, denyLabel);
+      return await this.showQuickPickConfirmation(
+        message,
+        detail,
+        approveLabel,
+        denyLabel,
+        operationContext
+      );
     } else {
-      return await this.showStatusBarConfirmation(message, detail, approveLabel, denyLabel);
+      return await this.showStatusBarConfirmation(
+        message,
+        detail,
+        approveLabel,
+        denyLabel,
+        operationContext
+      );
     }
   }
 
   /**
    * QuickPickを使用した確認UIを表示します
    */
-  private static async showQuickPickConfirmation(message: string, detail: string, approveLabel: string, denyLabel: string): Promise<string> {
+  private static async showQuickPickConfirmation(
+    message: string,
+    detail: string,
+    approveLabel: string,
+    denyLabel: string,
+    operationContext?: OperationContext
+  ): Promise<string> {
     // QuickPickを作成
     const quickPick = vscode.window.createQuickPick();
 
     quickPick.title = message;
     quickPick.placeholder = detail || "";
 
-    quickPick.items = [
+    const items = [
       { label: `$(check) Approve`, description: approveLabel },
       { label: `$(x) Deny`, description: denyLabel },
     ];
+
+    // 自動承認の設定オプションを追加
+    if (operationContext) {
+      const autoApprovalManager = AutoApprovalManager.getInstance();
+      items.push({
+        label: `$(gear) Auto-Approval Settings`,
+        description: `Current: ${autoApprovalManager.getStatusDescription()}`,
+      });
+    }
+
+    quickPick.items = items;
     quickPick.canSelectMany = false;
     quickPick.ignoreFocusOut = true;
 
@@ -61,6 +116,14 @@ export class ConfirmationUI {
       quickPick.onDidAccept(async () => {
         const selection = quickPick.selectedItems[0];
         quickPick.hide();
+
+        if (selection.label.includes("Auto-Approval Settings")) {
+          // 設定を開く
+          const autoApprovalManager = AutoApprovalManager.getInstance();
+          autoApprovalManager.openSettings();
+          resolve("Deny"); // 設定を開いた後はリクエストを拒否
+          return;
+        }
 
         if (selection.label.includes("Approve")) {
           resolve("Approve");
@@ -100,9 +163,17 @@ export class ConfirmationUI {
   /**
    * ステータスバーを使用した確認UIを表示します
    */
-  private static async showStatusBarConfirmation(message: string, detail: string, approveLabel: string, denyLabel: string): Promise<string> {
+  private static async showStatusBarConfirmation(
+    message: string,
+    detail: string,
+    approveLabel: string,
+    denyLabel: string,
+    operationContext?: OperationContext
+  ): Promise<string> {
     // メッセージを表示
-    vscode.window.showInformationMessage(`${message} ${detail ? `- ${detail}` : ""}`);
+    vscode.window.showInformationMessage(
+      `${message} ${detail ? `- ${detail}` : ""}`
+    );
 
     // StatusBarManagerのインスタンスを取得
     try {
@@ -142,7 +213,13 @@ export class ConfirmationUI {
       console.error("Error using StatusBarManager:", error);
       // エラーが発生した場合はQuickPickにフォールバック
       console.log("[ConfirmationUI] Falling back to QuickPick confirmation");
-      return await this.showQuickPickConfirmation(message, detail, approveLabel, denyLabel);
+      return await this.showQuickPickConfirmation(
+        message,
+        detail,
+        approveLabel,
+        denyLabel,
+        operationContext
+      );
     }
   }
 }

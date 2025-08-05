@@ -17,11 +17,10 @@ import { getTerminalOutputSchema, getTerminalOutputToolHandler } from "./tools/g
 import { listDirectorySchema, listDirectoryTool } from "./tools/list_directory";
 import { listVSCodeCommandsSchema, listVSCodeCommandsToolHandler } from "./tools/list_vscode_commands";
 import { previewUrlSchema, previewUrlToolHandler } from "./tools/preview_url";
-import { registerExternalTools } from "./tools/register_external_tools";
 import { textEditorSchema, textEditorTool } from "./tools/text_editor";
 
-export const extensionName = "vscode-mcp-server";
-export const extensionDisplayName = "VSCode MCP Bridge";
+export const extensionName = "mcp-bridge-c2v";
+export const extensionDisplayName = "MCP Bridge - Claude to VSCode";
 
 interface RegisteredTool {
   description?: string;
@@ -160,8 +159,10 @@ export function createMcpServer(_outputChannel: vscode.OutputChannel): McpServer
   const toolRegistry = new ToolRegistry(mcpBridgeC2V.server);
 
   // Register tools
+
   registerTools(toolRegistry);
   // Register resource handlers
+
   registerResourceHandlers(mcpBridgeC2V);
 
   return mcpBridgeC2V;
@@ -434,7 +435,7 @@ function registerTools(mcpBridgeC2V: ToolRegistry) {
   );
 
   // Register all external tools
-  registerExternalTools(mcpBridgeC2V);
+  // registerExternalTools(mcpBridgeC2V);
 }
 
 function registerResourceHandlers(mcpBridgeC2V: McpServer) {

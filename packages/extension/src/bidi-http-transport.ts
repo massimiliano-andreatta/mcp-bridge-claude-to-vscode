@@ -3,6 +3,7 @@ import { JSONRPCMessage } from "@modelcontextprotocol/sdk/types.js";
 import express from "express";
 import * as http from "node:http";
 import * as vscode from "vscode";
+import { ServerLifecycleManager } from "./utils/ServerLifecycleManager";
 
 export class BidiHttpTransport implements Transport {
   onclose?: () => void;
@@ -28,7 +29,9 @@ export class BidiHttpTransport implements Transport {
     return this.#serverStatus;
   }
 
-  constructor(readonly listenPort: number, private readonly outputChannel: vscode.OutputChannel) {}
+  constructor(readonly listenPort: number, private readonly outputChannel: vscode.OutputChannel) {
+    // Il lifecycle manager verrà inizializzato in start()
+  }
 
   async requestHandover(): Promise<boolean> {
     this.outputChannel.appendLine("Requesting server handover");
@@ -91,7 +94,18 @@ export class BidiHttpTransport implements Transport {
   async start(): Promise<void> {
     this.serverStatus = "starting";
 
+    // Registra questo transport con il lifecycle manager
+    const lifecycleManager = ServerLifecycleManager.getInstance();
+    lifecycleManager.registerTransport(this);
+
     const app = express();
+
+    // Middleware per trackare l'attività client
+    app.use((_req, _res, next) => {
+      const lifecycleManager = ServerLifecycleManager.getInstance();
+      lifecycleManager.updateClientActivity();
+      next();
+    });
 
     app.get("/ping", (_req: express.Request, res: express.Response) => {
       this.outputChannel.appendLine("Received ping request");
@@ -167,7 +181,6 @@ export class BidiHttpTransport implements Transport {
 
     // Only try to listen on the specified port
     const startServer = (port: number): Promise<number> => {
-      console.trace("Starting server on port: " + port);
       return new Promise((resolve, reject) => {
         const server = app
           .listen(port)
@@ -213,11 +226,38 @@ export class BidiHttpTransport implements Transport {
   }
 
   async close(): Promise<void> {
+    this.outputChannel.appendLine("BidiHttpTransport: Starting graceful shutdown");
     this.serverStatus = "stopped";
-    if (this.httpServer) {
-      this.outputChannel.appendLine("Closing server");
-      this.httpServer.close();
-      this.httpServer = undefined;
-    }
+
+    return new Promise<void>((resolve, reject) => {
+      if (this.httpServer) {
+        this.outputChannel.appendLine("BidiHttpTransport: Closing HTTP server");
+
+        // Set timeout for server close
+        const closeTimeout = setTimeout(() => {
+          this.outputChannel.appendLine("BidiHttpTransport: Server close timeout, forcing shutdown");
+          this.httpServer = undefined;
+          resolve();
+        }, 5000);
+
+        this.httpServer.close((error) => {
+          clearTimeout(closeTimeout);
+          if (error) {
+            this.outputChannel.appendLine(`BidiHttpTransport: Error closing server: ${error.message}`);
+            reject(error);
+          } else {
+            this.outputChannel.appendLine("BidiHttpTransport: Server closed successfully");
+            this.httpServer = undefined;
+            resolve();
+          }
+        });
+
+        // Close all active connections
+        this.httpServer.closeAllConnections?.();
+      } else {
+        this.outputChannel.appendLine("BidiHttpTransport: No server to close");
+        resolve();
+      }
+    });
   }
 }

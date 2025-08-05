@@ -3,9 +3,14 @@
   "displayName": "MCP Bridge - Claude to VSCode",
   "description": "Expose VSCode features such as file viewing and editing as MCP, enabling the LLM to access these functionalities.",
   "publisher": "mandreatta",
-  "version": "0.0.1",
+  "version": "0.0.6",
+  "license": "MIT",
   "type": "commonjs",
   "icon": "icon.png",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/massimiliano-andreatta/mcp-bridge-claude-to-vscode.git"
+  },
   "engines": {
     "vscode": "^1.98.0"
   },
@@ -25,6 +30,22 @@
       {
         "command": "mcpBridgeC2V.toggleActiveStatus",
         "title": "MCP Bridge: Toggle Active Status"
+      },
+      {
+        "command": "mcpBridgeC2V.openAutoApprovalSettings",
+        "title": "MCP Bridge: Open Auto-Approval Settings"
+      },
+      {
+        "command": "mcpBridgeC2V.toggleAutoApproval",
+        "title": "MCP Bridge: Toggle Auto-Approval"
+      },
+      {
+        "command": "mcpBridgeC2V.resetRateLimits",
+        "title": "MCP Bridge: Reset Rate Limits"
+      },
+      {
+        "command": "mcpBridgeC2V.showLifecycleStatus",
+        "title": "MCP Bridge: Show Lifecycle Status"
       }
     ],
     "configuration": {
@@ -53,9 +74,203 @@
           "type": "boolean",
           "default": false,
           "description": "If true, even commands marked as non-destructive (modifySomething=false) will require user confirmation."
+        },
+        "mcpBridgeC2V.autoApproval": {
+          "type": "object",
+          "default": {
+            "enabled": false,
+            "permissions": {
+              "read": {
+                "enabled": false,
+                "includeOutsideWorkspace": false
+              },
+              "write": {
+                "enabled": false,
+                "includeOutsideWorkspace": false,
+                "includeProtectedFiles": false
+              },
+              "execute": {
+                "enabled": false,
+                "allowedCommands": []
+              },
+              "debug": {
+                "enabled": false
+              },
+              "terminal": {
+                "enabled": false
+              },
+              "browser": {
+                "enabled": false
+              }
+            },
+            "limits": {
+              "maxRequests": 100,
+              "timeWindowMinutes": 60,
+              "retryDelaySeconds": 10,
+              "requestTimeoutSeconds": 60
+            }
+          },
+          "properties": {
+            "enabled": {
+              "type": "boolean",
+              "default": false,
+              "description": "Enable auto-approval system"
+            },
+            "permissions": {
+              "type": "object",
+              "properties": {
+                "read": {
+                  "type": "object",
+                  "properties": {
+                    "enabled": {
+                      "type": "boolean",
+                      "default": false,
+                      "description": "Auto-approve read operations"
+                    },
+                    "includeOutsideWorkspace": {
+                      "type": "boolean",
+                      "default": false,
+                      "description": "Allow reading files outside workspace"
+                    }
+                  }
+                },
+                "write": {
+                  "type": "object",
+                  "properties": {
+                    "enabled": {
+                      "type": "boolean",
+                      "default": false,
+                      "description": "Auto-approve write operations"
+                    },
+                    "includeOutsideWorkspace": {
+                      "type": "boolean",
+                      "default": false,
+                      "description": "Allow writing files outside workspace"
+                    },
+                    "includeProtectedFiles": {
+                      "type": "boolean",
+                      "default": false,
+                      "description": "Allow modifying protected files (like .git, config files)"
+                    }
+                  }
+                },
+                "execute": {
+                  "type": "object",
+                  "properties": {
+                    "enabled": {
+                      "type": "boolean",
+                      "default": false,
+                      "description": "Auto-approve command execution"
+                    },
+                    "allowedCommands": {
+                      "type": "array",
+                      "items": {
+                        "type": "string"
+                      },
+                      "default": [],
+                      "description": "List of allowed commands for auto-execution"
+                    }
+                  }
+                },
+                "debug": {
+                  "type": "object",
+                  "properties": {
+                    "enabled": {
+                      "type": "boolean",
+                      "default": false,
+                      "description": "Auto-approve debug operations"
+                    }
+                  }
+                },
+                "terminal": {
+                  "type": "object",
+                  "properties": {
+                    "enabled": {
+                      "type": "boolean",
+                      "default": false,
+                      "description": "Auto-approve terminal operations"
+                    }
+                  }
+                },
+                "browser": {
+                  "type": "object",
+                  "properties": {
+                    "enabled": {
+                      "type": "boolean",
+                      "default": false,
+                      "description": "Auto-approve browser preview operations"
+                    }
+                  }
+                }
+              }
+            },
+            "limits": {
+              "type": "object",
+              "properties": {
+                "maxRequests": {
+                  "type": "number",
+                  "default": 100,
+                  "description": "Maximum requests per time window"
+                },
+                "timeWindowMinutes": {
+                  "type": "number",
+                  "default": 60,
+                  "description": "Time window for request limits in minutes"
+                },
+                "retryDelaySeconds": {
+                  "type": "number",
+                  "default": 10,
+                  "description": "Delay before retrying failed requests"
+                },
+                "requestTimeoutSeconds": {
+                  "type": "number",
+                  "default": 60,
+                  "description": "Timeout for automatic request approval"
+                }
+              }
+            }
+          },
+          "description": "Auto-approval settings for different types of operations"
         }
       }
-    }
+    },
+    "viewsContainers": {
+      "activitybar": [
+        {
+          "id": "mcp-bridge-claude-to-vscode-container",
+          "title": "MCP Bridge",
+          "icon": "icon.png"
+        }
+      ]
+    },
+    "views": {
+      "mcp-bridge-claude-to-vscode-container": [
+        {
+          "type": "webview",
+          "id": "mcpBridgeC2V.mainPanelView",
+          "name": "MCP Control Panel"
+        },
+        {
+          "type": "webview",
+          "id": "mcp-bridge-claude-to-vscode-webview",
+          "name": "MCP Bridge"
+        }
+      ],
+      "explorer": [
+        {
+          "type": "webview",
+          "id": "mcpBridgeC2V.autoApprovalView",
+          "name": "MCP Auto-Approval",
+          "when": "true"
+        }
+      ]
+    },
+    "viewsWelcome": [
+      {
+        "view": "mcpBridgeC2V.autoApprovalView",
+        "contents": "Configure auto-approval settings for MCP Bridge operations.\n[Open Settings](command:mcpBridgeC2V.openAutoApprovalSettings)"
+      }
+    ]
   },
   "main": "./dist/extension.js",
   "scripts": {
