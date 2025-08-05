@@ -1,9 +1,9 @@
 {
   "name": "mcp-bridge-claude-to-vscode",
-  "displayName": "VSCode as MCP Server",
+  "displayName": "MCP Bridge - Claude to VSCode",
   "description": "Expose VSCode features such as file viewing and editing as MCP, enabling the LLM to access these functionalities.",
   "publisher": "mandreatta",
-  "version": "0.0.25",
+  "version": "0.0.1",
   "type": "commonjs",
   "icon": "icon.png",
   "engines": {
