@@ -1,4 +1,4 @@
-# VSCode as MCP Server
+# MCP Bridge - Claude to VSCode
 
 A VSCode extension that turns your VSCode into an MCP server, enabling advanced coding assistance from MCP clients like Claude Desktop.
 
@@ -19,7 +19,7 @@ A VSCode extension that turns your VSCode into an MCP server, enabling advanced 
 
 ### Multi-instance Switching
 
-- Easily switch the MCP server between multiple open VSCode windows.(Just by clicking the status bar item)
+- Easily switch the MCP server between multiple open VSCode windows.
 
 ### Relay Functionality (Experimental)
 
@@ -40,28 +40,26 @@ A VSCode extension that turns your VSCode into an MCP server, enabling advanced 
 
 ## Installation & Setup
 
-1. Install the extension from the [VSCode Marketplace](https://marketplace.visualstudio.com/items?itemName=acomagu.vscode-as-mcp-server).
+# Configure your MCP client:
 
-2. Configure your MCP client:
+    - **Using mcp-installer**: You can simply instruct it to "install the vscode-as-mcp-server MCP server".
+    - **Other clients like Claude Desktop**: Add the following to your configuration file (`claude_desktop_config.json`):
 
-   - **Using mcp-installer**: You can simply instruct it to "install the mcp-bridge-claude-to-vscode MCP server".
-   - **Other clients like Claude Desktop**: Add the following to your configuration file (`claude_desktop_config.json`):
+    ```json
+    {
+      "mcpServers": {
+        "vscode": {
+          "command": "npx",
+          "args": ["vscode-as-mcp-server"]
+        }
+      }
+    }
+    ```
 
-   ```json
-   {
-     "mcpServers": {
-       "mcp-bridge-c2v": {
-         "command": "npx",
-         "args": ["mcp-bridge-claude-to-vscode"]
-       }
-     }
-   }
-   ```
+# Check the MCP server status in the bottom-right VSCode status bar:
 
-3. Check the MCP server status in the bottom-right VSCode status bar:
-
-   - (Server icon): Server is running
-   - ∅: Click to start the server
+    - ✅: Server is running
+    - ∅: Click to start the server
 
 ![Server status indicator](https://storage.googleapis.com/zenn-user-upload/321704116d4a-20250408.png)
 
