@@ -4,7 +4,7 @@ This is a Node.js implementation of an MCP (Mechanism, Control, Policy) relay fo
 
 ## Features
 
-1. **Multiple Server Support**: Scans ports from the specified port to +10 to discover and connect to multiple MCP servers.
+1. **Multiple Server Support**: Scans ports from the specified port to +10 to discover and connect to multiple MCP Bridges.
 2. **Custom Protocol Extensions**: Implements custom protocol messages for:
    - Client notifying server: "You are now the main server"
    - Server requesting to client: "I want to be the main server"
@@ -25,7 +25,7 @@ vscode-as-mcp-relay --server-url http://localhost:60100 --listen-port 6011
 
 ### Command Line Options
 
-- `--server-url`: Base URL of the MCP server (default: http://localhost:60100)
+- `--server-url`: Base URL of the MCP Bridge (default: http://localhost:60100)
 - `--listen-port`: Starting port to listen for incoming JSON-RPC messages (default: 6011)
 
 ## Custom Protocol
@@ -33,6 +33,7 @@ vscode-as-mcp-relay --server-url http://localhost:60100 --listen-port 6011
 The relay implements a custom protocol for communication between clients and servers:
 
 1. **Registration**:
+
    ```json
    {
      "clientUrl": "http://localhost:PORT",
@@ -41,6 +42,7 @@ The relay implements a custom protocol for communication between clients and ser
    ```
 
 2. **Set Main Server** (Client to Server):
+
    ```json
    {
      "jsonrpc": "2.0",
@@ -66,7 +68,7 @@ The relay implements a custom protocol for communication between clients and ser
 
 ## How It Works
 
-1. The relay scans ports to discover available MCP servers.
+1. The relay scans ports to discover available MCP Bridges.
 2. It registers with all discovered servers.
 3. It establishes the first discovered server as the primary.
 4. It processes stdin and relays messages to the active server.

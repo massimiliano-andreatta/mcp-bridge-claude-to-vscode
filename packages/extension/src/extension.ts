@@ -1,54 +1,54 @@
-import * as vscode from 'vscode';
-import { BidiHttpTransport } from './bidi-http-transport';
-import { registerVSCodeCommands } from './commands';
-import { createMcpServer, extensionDisplayName } from './mcp-server';
-import { DIFF_VIEW_URI_SCHEME } from './utils/DiffViewProvider';
+import * as vscode from "vscode";
+import { BidiHttpTransport } from "./bidi-http-transport";
+import { registerVSCodeCommands } from "./commands";
+import { createMcpServer, extensionDisplayName } from "./mcp-server";
+import { DIFF_VIEW_URI_SCHEME } from "./utils/DiffViewProvider";
 
-// MCP Server のステータスを表示するステータスバーアイテム
+// MCP Bridge のステータスを表示するステータスバーアイテム
 let serverStatusBarItem: vscode.StatusBarItem;
 let transport: BidiHttpTransport;
 
 // ステータスバーを更新する関数
-function updateServerStatusBar(status: 'running' | 'stopped' | 'starting' | 'tool_list_updated') {
+function updateServerStatusBar(status: "running" | "stopped" | "starting" | "tool_list_updated") {
   if (!serverStatusBarItem) {
     return;
   }
 
   switch (status) {
-    case 'running':
-      serverStatusBarItem.text = '$(server) MCP Server';
-      serverStatusBarItem.tooltip = 'MCP Server is running';
-      serverStatusBarItem.command = 'mcpServer.stopServer';
+    case "running":
+      serverStatusBarItem.text = "$(server) MCP Bridge";
+      serverStatusBarItem.tooltip = "MCP Bridge is running";
+      serverStatusBarItem.command = "mcpBridgeC2V.stopServer";
       break;
-    case 'starting':
-      serverStatusBarItem.text = '$(sync~spin) MCP Server';
-      serverStatusBarItem.tooltip = 'Starting...';
+    case "starting":
+      serverStatusBarItem.text = "$(sync~spin) MCP Bridge";
+      serverStatusBarItem.tooltip = "Starting...";
       serverStatusBarItem.command = undefined;
       break;
-    case 'tool_list_updated':
-      serverStatusBarItem.text = '$(warning) MCP Server';
-      serverStatusBarItem.tooltip = 'Tool list updated - Restart MCP Client';
-      serverStatusBarItem.command = 'mcpServer.stopServer';
+    case "tool_list_updated":
+      serverStatusBarItem.text = "$(warning) MCP Bridge";
+      serverStatusBarItem.tooltip = "Tool list updated - Restart MCP Client";
+      serverStatusBarItem.command = "mcpBridgeC2V.stopServer";
       break;
-    case 'stopped':
+    case "stopped":
     default:
-      serverStatusBarItem.text = '$(circle-slash) MCP Server';
-      serverStatusBarItem.tooltip = 'MCP Server is not running';
-      serverStatusBarItem.command = 'mcpServer.toggleActiveStatus';
+      serverStatusBarItem.text = "$(circle-slash) MCP Bridge";
+      serverStatusBarItem.tooltip = "MCP Bridge is not running";
+      serverStatusBarItem.command = "mcpBridgeC2V.toggleActiveStatus";
       break;
   }
   serverStatusBarItem.show();
 }
 
 export const activate = async (context: vscode.ExtensionContext) => {
-  console.log('LMLMLM', vscode.lm.tools);
+  console.log("LMLMLM", vscode.lm.tools);
 
   // Create the output channel for logging
   const outputChannel = vscode.window.createOutputChannel(extensionDisplayName);
   outputChannel.appendLine(`Activating ${extensionDisplayName}...`);
 
-  // Initialize the MCP server instance
-  const mcpServer = createMcpServer(outputChannel);
+  // Initialize the MCP Bridge instance
+  const mcpBridgeC2V = createMcpServer(outputChannel);
 
   // Create status bar item
   serverStatusBarItem = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Right, 100);
@@ -56,14 +56,14 @@ export const activate = async (context: vscode.ExtensionContext) => {
 
   // Server start function
   async function startServer(port: number) {
-    outputChannel.appendLine(`DEBUG: Starting MCP Server on port ${port}...`);
+    outputChannel.appendLine(`DEBUG: Starting MCP Bridge on port ${port}...`);
     transport = new BidiHttpTransport(port, outputChannel);
     // サーバー状態変更のイベントハンドラを設定
     transport.onServerStatusChanged = (status) => {
       updateServerStatusBar(status);
     };
 
-    await mcpServer.connect(transport); // connect calls transport.start().
+    await mcpBridgeC2V.connect(transport); // connect calls transport.start().
     updateServerStatusBar(transport.serverStatus);
   }
 
@@ -75,22 +75,20 @@ export const activate = async (context: vscode.ExtensionContext) => {
   })();
 
   // DiffViewProvider の URI スキームを mcp-diff に変更
-  context.subscriptions.push(
-    vscode.workspace.registerTextDocumentContentProvider(DIFF_VIEW_URI_SCHEME, diffContentProvider),
-  );
+  context.subscriptions.push(vscode.workspace.registerTextDocumentContentProvider(DIFF_VIEW_URI_SCHEME, diffContentProvider));
 
   // Start server if configured to do so
-  const mcpConfig = vscode.workspace.getConfiguration('mcpServer');
-  const port = mcpConfig.get<number>('port', 60100);
+  const mcpConfig = vscode.workspace.getConfiguration("mcpBridgeC2V");
+  const port = mcpConfig.get<number>("port", 60100);
   try {
     await startServer(port);
-    outputChannel.appendLine(`MCP Server started on port ${port}.`);
+    outputChannel.appendLine(`MCP Bridge started on port ${port}.`);
   } catch (err) {
-    outputChannel.appendLine(`Failed to start MCP Server: ${err}`);
+    outputChannel.appendLine(`Failed to start MCP Bridge: ${err}`);
   }
 
   // Register VSCode commands
-  registerVSCodeCommands(context, mcpServer, outputChannel, startServer, transport);
+  registerVSCodeCommands(context, mcpBridgeC2V, outputChannel, startServer, transport);
 
   outputChannel.appendLine(`${extensionDisplayName} activated.`);
 };

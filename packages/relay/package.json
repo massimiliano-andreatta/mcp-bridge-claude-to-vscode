@@ -1,6 +1,6 @@
 {
   "name": "mcp-bridge-claude-to-vscode",
-  "version": "0.0.14",
+  "version": "0.0.1",
   "description": "VSCode MCP relay that supports multiple servers",
   "main": "dist/index.js",
   "bin": {

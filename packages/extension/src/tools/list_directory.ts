@@ -1,21 +1,21 @@
-import * as ignore from 'ignore';
-import * as path from 'path';
-import * as vscode from 'vscode';
-import { z } from 'zod';
+import * as ignore from "ignore";
+import * as path from "path";
+import * as vscode from "vscode";
+import { z } from "zod";
 
 // Zodスキーマ定義
 export const listDirectorySchema = z.object({
-  path: z.string().describe('Directory path to list'),
-  depth: z.number().int().min(1).optional().describe('Maximum depth for traversal (default: unlimited)'),
-  include_hidden: z.boolean().optional().describe('Include hidden files/directories (default: false)'),
+  path: z.string().describe("Directory path to list"),
+  depth: z.number().int().min(1).optional().describe("Maximum depth for traversal (default: unlimited)"),
+  include_hidden: z.boolean().optional().describe("Include hidden files/directories (default: false)"),
 });
 
 type ListDirectoryParams = z.infer<typeof listDirectorySchema>;
 
 interface ListDirectoryResult {
-  content: { type: 'text'; text: string }[];
+  content: { type: "text"; text: string }[];
   isError?: boolean;
-  [key: string]: unknown; // 追加: MCP Serverが期待するインデックスシグネチャ
+  [key: string]: unknown; // 追加: MCP Bridgeが期待するインデックスシグネチャ
 }
 
 interface TreeNode {
@@ -37,13 +37,13 @@ export async function listDirectoryTool(params: ListDirectoryParams): Promise<Li
       const stats = await vscode.workspace.fs.stat(uri);
       if (!(stats.type & vscode.FileType.Directory)) {
         return {
-          content: [{ type: 'text', text: `${resolvedPath} is not a directory` }],
+          content: [{ type: "text", text: `${resolvedPath} is not a directory` }],
           isError: true,
         };
       }
     } catch (error) {
       return {
-        content: [{ type: 'text', text: 'Directory is empty or does not exist' }],
+        content: [{ type: "text", text: "Directory is empty or does not exist" }],
         isError: true,
       };
     }
@@ -53,26 +53,19 @@ export async function listDirectoryTool(params: ListDirectoryParams): Promise<Li
     const ig = ignore.default().add(ignorePatterns);
 
     // ディレクトリツリーを構築
-    const tree = await buildDirectoryTree(
-      resolvedPath,
-      path.basename(resolvedPath),
-      1,
-      params.depth || Number.MAX_SAFE_INTEGER,
-      params.include_hidden || false,
-      ig
-    );
+    const tree = await buildDirectoryTree(resolvedPath, path.basename(resolvedPath), 1, params.depth || Number.MAX_SAFE_INTEGER, params.include_hidden || false, ig);
 
     // ツリーを表示用のテキストに変換
     const treeText = generateTreeText(tree);
 
     return {
-      content: [{ type: 'text', text: treeText }],
+      content: [{ type: "text", text: treeText }],
       isError: false,
     };
   } catch (error) {
-    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+    const errorMessage = error instanceof Error ? error.message : "Unknown error";
     return {
-      content: [{ type: 'text', text: `Failed to list directory: ${errorMessage}` }],
+      content: [{ type: "text", text: `Failed to list directory: ${errorMessage}` }],
       isError: true,
     };
   }
@@ -109,16 +102,16 @@ async function loadGitignorePatterns(dirPath: string): Promise<string[]> {
     let currentDir = dirPath;
 
     while (currentDir) {
-      const gitignorePath = path.join(currentDir, '.gitignore');
+      const gitignorePath = path.join(currentDir, ".gitignore");
       const uri = vscode.Uri.file(gitignorePath);
 
       try {
         const content = await vscode.workspace.fs.readFile(uri);
-        const lines = Buffer.from(content).toString('utf-8').split('\n');
+        const lines = Buffer.from(content).toString("utf-8").split("\n");
 
-        const validPatterns = lines.filter(line => {
+        const validPatterns = lines.filter((line) => {
           const trimmed = line.trim();
-          return trimmed && !trimmed.startsWith('#');
+          return trimmed && !trimmed.startsWith("#");
         });
 
         patterns.push(...validPatterns);
@@ -135,7 +128,7 @@ async function loadGitignorePatterns(dirPath: string): Promise<string[]> {
 
     return patterns;
   } catch (error) {
-    console.error('Error loading .gitignore patterns:', error);
+    console.error("Error loading .gitignore patterns:", error);
     return [];
   }
 }
@@ -150,14 +143,7 @@ async function loadGitignorePatterns(dirPath: string): Promise<string[]> {
  * @param ignorer ignore パターンチェッカー
  * @returns ツリーノード
  */
-async function buildDirectoryTree(
-  fullPath: string,
-  nodeName: string,
-  currentDepth: number,
-  maxDepth: number,
-  includeHidden: boolean,
-  ignorer: ignore.Ignore
-): Promise<TreeNode> {
+async function buildDirectoryTree(fullPath: string, nodeName: string, currentDepth: number, maxDepth: number, includeHidden: boolean, ignorer: ignore.Ignore): Promise<TreeNode> {
   const uri = vscode.Uri.file(fullPath);
   const root: TreeNode = {
     name: nodeName,
@@ -186,7 +172,7 @@ async function buildDirectoryTree(
 
     for (const [name, type] of sortedEntries) {
       // 隠しファイルをスキップ (オプションで設定可能)
-      if (!includeHidden && name.startsWith('.')) {
+      if (!includeHidden && name.startsWith(".")) {
         continue;
       }
 
@@ -202,14 +188,7 @@ async function buildDirectoryTree(
 
       if (isDirectory) {
         // 再帰的にサブディレクトリをスキャン
-        const childNode = await buildDirectoryTree(
-          entryPath,
-          name,
-          currentDepth + 1,
-          maxDepth,
-          includeHidden,
-          ignorer
-        );
+        const childNode = await buildDirectoryTree(entryPath, name, currentDepth + 1, maxDepth, includeHidden, ignorer);
         root.children.push(childNode);
       } else {
         // ファイルノードを追加
@@ -235,17 +214,17 @@ async function buildDirectoryTree(
  * @param isLast 最後の子ノードかどうか
  * @returns ツリーテキスト
  */
-function generateTreeText(node: TreeNode, prefix = '', isLast = true): string {
+function generateTreeText(node: TreeNode, prefix = "", isLast = true): string {
   let result = prefix;
 
-  if (prefix !== '') {
-    result += isLast ? '└── ' : '├── ';
+  if (prefix !== "") {
+    result += isLast ? "└── " : "├── ";
   }
 
-  result += `${node.name}${node.isDirectory ? '/' : ''}\n`;
+  result += `${node.name}${node.isDirectory ? "/" : ""}\n`;
 
   if (node.children.length > 0) {
-    const newPrefix = prefix + (isLast ? '    ' : '│   ');
+    const newPrefix = prefix + (isLast ? "    " : "│   ");
 
     for (let i = 0; i < node.children.length; i++) {
       const child = node.children[i];

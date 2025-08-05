@@ -1,40 +1,46 @@
 #!/usr/bin/env node
 
-import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
+import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
-import { CallToolRequestSchema, CallToolResult, JSONRPCRequest, JSONRPCResponse, ListToolsRequestSchema, ListToolsResult } from '@modelcontextprotocol/sdk/types.js';
-import * as fs from 'node:fs/promises';
-import * as os from 'node:os';
-import * as path from 'node:path';
-import { initialTools } from './initial_tools.js';
+import { CallToolRequestSchema, CallToolResult, JSONRPCRequest, JSONRPCResponse, ListToolsRequestSchema, ListToolsResult } from "@modelcontextprotocol/sdk/types.js";
+import * as fs from "node:fs/promises";
+import * as os from "node:os";
+import * as path from "node:path";
+import { initialTools } from "./initial_tools.js";
 
-const CACHE_DIR = path.join(os.homedir(), '.vscode-as-mcp-relay-cache');
-const TOOLS_CACHE_FILE = path.join(CACHE_DIR, 'tools-list-cache.json');
+const CACHE_DIR = path.join(os.homedir(), ".vscode-as-mcp-relay-cache");
+const TOOLS_CACHE_FILE = path.join(CACHE_DIR, "tools-list-cache.json");
 const MAX_RETRIES = 3;
 const RETRY_INTERVAL = 1000; // 1 second
 
 class MCPRelay {
   private mcpServer: McpServer;
   constructor(readonly serverUrl: string) {
-    this.mcpServer = new McpServer({
-      name: 'vscode-as-mcp',
-      version: '0.0.1',
-    }, {
-      capabilities: {
-        tools: {},
+    this.mcpServer = new McpServer(
+      {
+        name: "mcp-bridge-c2v",
+        version: "0.0.1",
       },
-    });
+      {
+        capabilities: {
+          tools: {},
+        },
+      }
+    );
 
     // Periodically call listTools to update the tools list
     setInterval(async () => {
       let tools: any[];
       try {
-        const resp = await this.requestWithRetry(this.serverUrl, JSON.stringify({
-          jsonrpc: '2.0',
-          method: 'tools/list',
-          params: {},
-          id: Math.floor(Math.random() * 1000000),
-        } as JSONRPCRequest));
+        const resp = await this.requestWithRetry(
+          this.serverUrl,
+          JSON.stringify({
+            jsonrpc: "2.0",
+            method: "tools/list",
+            params: {},
+            id: Math.floor(Math.random() * 1000000),
+          } as JSONRPCRequest)
+        );
         const parsedResponse = resp as JSONRPCResponse;
         tools = parsedResponse.result.tools as any[];
       } catch (err) {
@@ -45,13 +51,13 @@ class MCPRelay {
 
       // Compare the fetched tools with the cached ones
       if (cachedTools && cachedTools.length === tools.length) {
-        console.error('Fetched tools list is the same as the cached one, not updating cache');
+        console.error("Fetched tools list is the same as the cached one, not updating cache");
         return { tools: cachedTools };
       }
 
       // Notify to user that tools have been updated and restart the client
       try {
-        await this.requestWithRetry(this.serverUrl + '/notify-tools-updated', '');
+        await this.requestWithRetry(this.serverUrl + "/notify-tools-updated", "");
       } catch (err) {
         console.error(`Failed to notify tools updated: ${(err as Error).message}`);
       }
@@ -64,16 +70,19 @@ class MCPRelay {
     }, 30000); // every 30 seconds
 
     this.mcpServer.server.setRequestHandler(ListToolsRequestSchema, async (request): Promise<ListToolsResult> => {
-      const cachedTools = await this.getToolsCache() ?? initialTools;
+      const cachedTools = (await this.getToolsCache()) ?? initialTools;
 
       let tools: any[];
       try {
-        const response = await this.requestWithRetry(this.serverUrl, JSON.stringify({
-          jsonrpc: '2.0',
-          method: 'tools/list',
-          params: request.params,
-          id: Math.floor(Math.random() * 1000000),
-        } as JSONRPCRequest));
+        const response = await this.requestWithRetry(
+          this.serverUrl,
+          JSON.stringify({
+            jsonrpc: "2.0",
+            method: "tools/list",
+            params: request.params,
+            id: Math.floor(Math.random() * 1000000),
+          } as JSONRPCRequest)
+        );
         const parsedResponse = response as JSONRPCResponse;
         tools = parsedResponse.result.tools as any[];
       } catch (err) {
@@ -93,22 +102,27 @@ class MCPRelay {
 
     this.mcpServer.server.setRequestHandler(CallToolRequestSchema, async (request): Promise<CallToolResult> => {
       try {
-        const response = await this.requestWithRetry(this.serverUrl, JSON.stringify({
-          jsonrpc: '2.0',
-          method: request.method,
-          params: request.params,
-          id: Math.floor(Math.random() * 1000000),
-        } as JSONRPCRequest));
+        const response = await this.requestWithRetry(
+          this.serverUrl,
+          JSON.stringify({
+            jsonrpc: "2.0",
+            method: request.method,
+            params: request.params,
+            id: Math.floor(Math.random() * 1000000),
+          } as JSONRPCRequest)
+        );
         const parsedResponse = response as JSONRPCResponse;
         return parsedResponse.result as any;
       } catch (e) {
         console.error(`Failed to call tool: ${(e as Error).message}`);
         return {
           isError: true,
-          content: [{
-            type: 'text',
-            text: `Failed to communicate with the VSCode as MCP Extension. Please ensure that the VSCode Extension is installed and that "MCP Server" is displayed in the status bar.`,
-          }],
+          content: [
+            {
+              type: "text",
+              text: `Failed to communicate with the VSCode as MCP Extension. Please ensure that the VSCode Extension is installed and that "MCP Bridge" is displayed in the status bar.`,
+            },
+          ],
         };
       }
     });
@@ -120,7 +134,7 @@ class MCPRelay {
       try {
         await fs.mkdir(CACHE_DIR, { recursive: true });
       } catch (err) {
-        if ((err as NodeJS.ErrnoException).code !== 'EEXIST') {
+        if ((err as NodeJS.ErrnoException).code !== "EEXIST") {
           throw err;
         }
       }
@@ -133,8 +147,8 @@ class MCPRelay {
   async saveToolsCache(tools: any[]): Promise<void> {
     await this.initCacheDir();
     try {
-      await fs.writeFile(TOOLS_CACHE_FILE, JSON.stringify(tools), 'utf8');
-      console.error('Tools list cache saved');
+      await fs.writeFile(TOOLS_CACHE_FILE, JSON.stringify(tools), "utf8");
+      console.error("Tools list cache saved");
     } catch (err) {
       console.error(`Failed to save cache: ${(err as Error).message}`);
     }
@@ -143,7 +157,7 @@ class MCPRelay {
   async getToolsCache() {
     try {
       await fs.access(TOOLS_CACHE_FILE);
-      const cacheData = await fs.readFile(TOOLS_CACHE_FILE, 'utf8');
+      const cacheData = await fs.readFile(TOOLS_CACHE_FILE, "utf8");
       return JSON.parse(cacheData) as any[];
     } catch (err) {
       console.error(`Failed to load cache file: ${(err as Error).message}`);
@@ -157,14 +171,14 @@ class MCPRelay {
     for (let attempt = 0; attempt < MAX_RETRIES; attempt++) {
       if (attempt > 0) {
         console.error(`Retry attempt ${attempt + 1}/${MAX_RETRIES}`);
-        await new Promise(resolve => setTimeout(resolve, RETRY_INTERVAL));
+        await new Promise((resolve) => setTimeout(resolve, RETRY_INTERVAL));
       }
 
       try {
         const response = await fetch(url, {
-          method: 'POST',
+          method: "POST",
           headers: {
-            'Content-Type': 'application/json'
+            "Content-Type": "application/json",
           },
           body: body,
         });
@@ -189,15 +203,15 @@ class MCPRelay {
   start() {
     return this.mcpServer.connect(new StdioServerTransport());
   }
-};
+}
 
 // コマンドライン引数の解析
 function parseArgs() {
   const args = process.argv.slice(2);
-  let serverUrl = 'http://localhost:60100';
+  let serverUrl = "http://localhost:60100";
 
   for (let i = 0; i < args.length; i++) {
-    if (args[i] === '--server-url' && i + 1 < args.length) {
+    if (args[i] === "--server-url" && i + 1 < args.length) {
       serverUrl = args[i + 1];
       i++;
     }

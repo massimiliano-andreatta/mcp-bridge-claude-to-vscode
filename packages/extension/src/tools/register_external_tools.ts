@@ -1,6 +1,6 @@
-import { Tool } from '@modelcontextprotocol/sdk/types';
-import * as vscode from 'vscode';
-import { ToolRegistry } from '../mcp-server';
+import { Tool } from "@modelcontextprotocol/sdk/types";
+import * as vscode from "vscode";
+import { ToolRegistry } from "../mcp-server";
 
 // ホワイトリストとして登録するツールの名前の配列
 // const ALLOWED_TOOLS = [
@@ -28,68 +28,65 @@ import { ToolRegistry } from '../mcp-server';
 
 const notAllowedTools = [
   // No Input Schema
-  'copilot_readProjectStructure',
-  'copilot_testFailure',
+  "copilot_readProjectStructure",
+  "copilot_testFailure",
   // not allowed without invocationToken
-  'copilot_runInTerminal',
-  'copilot_getTerminalOutput',
-  'copilot_getTerminalSelection',
-  'copilot_getTerminalLastCommand',
-  'copilot_editFile',
+  "copilot_runInTerminal",
+  "copilot_getTerminalOutput",
+  "copilot_getTerminalSelection",
+  "copilot_getTerminalLastCommand",
+  "copilot_editFile",
 ];
 
-// Function to register all allowed external tools to the MCP server
-export function registerExternalTools(mcpServer: ToolRegistry) {
+// Function to register all allowed external tools to the MCP Bridge
+export function registerExternalTools(mcpBridgeC2V: ToolRegistry) {
   if (!vscode.lm || !vscode.lm.tools) {
-    console.error('vscode.lm.tools is not available');
+    console.error("vscode.lm.tools is not available");
     return;
   }
 
   // ホワイトリストに含まれているツールだけを登録
   for (const tool of vscode.lm.tools) {
     if (!notAllowedTools.includes(tool.name)) {
-      if (!tool.inputSchema || !('type' in tool.inputSchema) || tool.inputSchema.type !== 'object') {
+      if (!tool.inputSchema || !("type" in tool.inputSchema) || tool.inputSchema.type !== "object") {
         console.error(`Tool ${tool.name} has no input schema or invalid type`);
-        continue
+        continue;
       }
-      registerTool(mcpServer, tool);
+      registerTool(mcpBridgeC2V, tool);
     }
   }
 }
 
 // 各ツールを登録する関数
-function registerTool(mcpServer: ToolRegistry, tool: vscode.LanguageModelToolInformation) {
-  mcpServer.toolWithRawInputSchema(
-    tool.name,
-    tool.description || `Tool: ${tool.name}`,
-    tool.inputSchema as (Tool['inputSchema'] | undefined) ?? { type: 'object' },
-    async (params: any) => {
-      try {
-        // console.log('TEST', await vscode.lm.invokeTool('copilot_getErrors', {
-        //   input: {},
-        //   toolInvocationToken: undefined,
-        // }));
-        // VSCodeのネイティブツールを呼び出す
-        const result = await vscode.lm.invokeTool(tool.name, {
-          input: params,
-          toolInvocationToken: undefined
-        });
+function registerTool(mcpBridgeC2V: ToolRegistry, tool: vscode.LanguageModelToolInformation) {
+  mcpBridgeC2V.toolWithRawInputSchema(tool.name, tool.description || `Tool: ${tool.name}`, (tool.inputSchema as Tool["inputSchema"] | undefined) ?? { type: "object" }, async (params: any) => {
+    try {
+      // console.log('TEST', await vscode.lm.invokeTool('copilot_getErrors', {
+      //   input: {},
+      //   toolInvocationToken: undefined,
+      // }));
+      // VSCodeのネイティブツールを呼び出す
+      const result = await vscode.lm.invokeTool(tool.name, {
+        input: params,
+        toolInvocationToken: undefined,
+      });
 
-        // 結果を適切な形式に変換
-        return {
-          content: [{
-            type: 'text' as const,
-            text: JSON.stringify(result.content)
-          }],
-          isError: false
-        };
-      } catch (error) {
-        console.error(`Error invoking tool ${tool.name}:`, error);
-        return {
-          content: [{ type: 'text' as const, text: `Error invoking ${tool.name}: ${error}` }],
-          isError: true
-        };
-      }
+      // 結果を適切な形式に変換
+      return {
+        content: [
+          {
+            type: "text" as const,
+            text: JSON.stringify(result.content),
+          },
+        ],
+        isError: false,
+      };
+    } catch (error) {
+      console.error(`Error invoking tool ${tool.name}:`, error);
+      return {
+        content: [{ type: "text" as const, text: `Error invoking ${tool.name}: ${error}` }],
+        isError: true,
+      };
     }
-  );
+  });
 }

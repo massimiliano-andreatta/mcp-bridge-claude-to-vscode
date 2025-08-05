@@ -1,6 +1,6 @@
 # MCP Bridge - Claude to VSCode
 
-A VSCode extension that turns your VSCode into an MCP server, enabling advanced coding assistance from MCP clients like Claude Desktop.
+A VSCode extension that turns your VSCode into an MCP Bridge, enabling advanced coding assistance from MCP clients like Claude Desktop.
 
 ## Key Features
 
@@ -19,11 +19,11 @@ A VSCode extension that turns your VSCode into an MCP server, enabling advanced 
 
 ### Multi-instance Switching
 
-- Easily switch the MCP server between multiple open VSCode windows.
+- Easily switch the MCP Bridge between multiple open VSCode windows.
 
 ### Relay Functionality (Experimental)
 
-- Relay and expose built-in MCP servers introduced in VSCode 1.99 externally.
+- Relay and expose built-in MCP Bridges introduced in VSCode 1.99 externally.
 - Allows external access to tools provided by other MCP extensions, such as GitHub Copilot.
 
 ## Available Built-in Tools
@@ -42,26 +42,24 @@ A VSCode extension that turns your VSCode into an MCP server, enabling advanced 
 
 # Configure your MCP client:
 
-    - **Using mcp-installer**: You can simply instruct it to "install the vscode-as-mcp-server MCP server".
+    - **Using mcp-installer**: You can simply instruct it to "install the vscode-as-mcp-server MCP Bridge".
     - **Other clients like Claude Desktop**: Add the following to your configuration file (`claude_desktop_config.json`):
 
-    ```json
-    {
-      "mcpServers": {
-        "vscode": {
-          "command": "npx",
-          "args": ["vscode-as-mcp-server"]
-        }
-      }
+```json
+{
+  "mcpServers": {
+    "mcpBridgeC2Vs": {
+      "command": "npx",
+      "args": ["mcp-bridge-claude-to-vscode"]
     }
-    ```
+  }
+}
+```
 
-# Check the MCP server status in the bottom-right VSCode status bar:
+# Check the MCP Bridge status in the bottom-right VSCode status bar:
 
     - ✅: Server is running
     - ∅: Click to start the server
-
-![Server status indicator](https://storage.googleapis.com/zenn-user-upload/321704116d4a-20250408.png)
 
 ## Motivation
 
@@ -71,7 +69,7 @@ Bug reports and feedback are very welcome! 🙇
 
 ## Future Roadmap
 
-- Ability to select which built-in MCP servers to expose
+- Ability to select which built-in MCP Bridges to expose
 - WebView-based approval UI (similar to Roo Code)
 - Integration with VSCode's file history (Timeline)
 - Instant toggling of auto-approvals and tool activation/deactivation

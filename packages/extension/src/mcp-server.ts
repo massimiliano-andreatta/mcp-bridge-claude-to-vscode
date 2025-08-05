@@ -21,7 +21,7 @@ import { registerExternalTools } from "./tools/register_external_tools";
 import { textEditorSchema, textEditorTool } from "./tools/text_editor";
 
 export const extensionName = "vscode-mcp-server";
-export const extensionDisplayName = "VSCode MCP Server";
+export const extensionDisplayName = "VSCode MCP Bridge";
 
 interface RegisteredTool {
   description?: string;
@@ -144,7 +144,7 @@ export class ToolRegistry {
 }
 
 export function createMcpServer(_outputChannel: vscode.OutputChannel): McpServer {
-  const mcpServer = new McpServer(
+  const mcpBridgeC2V = new McpServer(
     {
       name: extensionName,
       version: packageJson.version,
@@ -157,19 +157,19 @@ export function createMcpServer(_outputChannel: vscode.OutputChannel): McpServer
     }
   );
 
-  const toolRegistry = new ToolRegistry(mcpServer.server);
+  const toolRegistry = new ToolRegistry(mcpBridgeC2V.server);
 
   // Register tools
   registerTools(toolRegistry);
   // Register resource handlers
-  registerResourceHandlers(mcpServer);
+  registerResourceHandlers(mcpBridgeC2V);
 
-  return mcpServer;
+  return mcpBridgeC2V;
 }
 
-function registerTools(mcpServer: ToolRegistry) {
+function registerTools(mcpBridgeC2V: ToolRegistry) {
   // Register the "execute_command" tool
-  mcpServer.tool(
+  mcpBridgeC2V.tool(
     "execute_command",
     dedent`
       Execute a command in a VSCode integrated terminal with proper shell integration.
@@ -197,7 +197,7 @@ function registerTools(mcpServer: ToolRegistry) {
   );
 
   // Register the "code_checker" tool
-  mcpServer.tool(
+  mcpBridgeC2V.tool(
     "code_checker",
     dedent`
       Retrieve diagnostics from VSCode's language services for the active workspace.
@@ -222,7 +222,7 @@ function registerTools(mcpServer: ToolRegistry) {
   );
 
   // Register 'focus_editor' tool
-  mcpServer.tool(
+  mcpBridgeC2V.tool(
     "focus_editor",
     dedent`
       Open the specified file in the VSCode editor and navigate to a specific line and column.
@@ -245,7 +245,7 @@ function registerTools(mcpServer: ToolRegistry) {
   );
 
   // Register debug tools
-  mcpServer.tool("list_debug_sessions", "List all active debug sessions in the workspace.", listDebugSessionsSchema.shape, async () => {
+  mcpBridgeC2V.tool("list_debug_sessions", "List all active debug sessions in the workspace.", listDebugSessionsSchema.shape, async () => {
     const result = listDebugSessions();
     return {
       ...result,
@@ -253,7 +253,7 @@ function registerTools(mcpServer: ToolRegistry) {
     };
   });
 
-  mcpServer.tool("start_debug_session", "Start a new debug session with the provided configuration.", startDebugSessionSchema.shape, async (params) => {
+  mcpBridgeC2V.tool("start_debug_session", "Start a new debug session with the provided configuration.", startDebugSessionSchema.shape, async (params) => {
     const result = await startDebugSession(params);
     return {
       ...result,
@@ -264,7 +264,7 @@ function registerTools(mcpServer: ToolRegistry) {
     };
   });
 
-  mcpServer.tool("restart_debug_session", "Restart a debug session by stopping it and then starting it with the provided configuration.", startDebugSessionSchema.shape, async (params) => {
+  mcpBridgeC2V.tool("restart_debug_session", "Restart a debug session by stopping it and then starting it with the provided configuration.", startDebugSessionSchema.shape, async (params) => {
     await stopDebugSession({ sessionName: params.configuration.name });
     const result = await startDebugSession(params);
     return {
@@ -276,7 +276,7 @@ function registerTools(mcpServer: ToolRegistry) {
     };
   });
 
-  mcpServer.tool("stop_debug_session", "Stop all debug sessions that match the provided session name.", stopDebugSessionSchema.shape, async (params) => {
+  mcpBridgeC2V.tool("stop_debug_session", "Stop all debug sessions that match the provided session name.", stopDebugSessionSchema.shape, async (params) => {
     const result = await stopDebugSession(params);
     return {
       ...result,
@@ -288,7 +288,7 @@ function registerTools(mcpServer: ToolRegistry) {
   });
 
   // Register text editor tool
-  mcpServer.tool(
+  mcpBridgeC2V.tool(
     "text_editor",
     dedent`
       A text editor tool that provides file manipulation capabilities using VSCode's native APIs:
@@ -316,7 +316,7 @@ function registerTools(mcpServer: ToolRegistry) {
   );
 
   // Register list directory tool
-  mcpServer.tool(
+  mcpBridgeC2V.tool(
     "list_directory",
     dedent`
       List directory contents in a tree format, respecting .gitignore patterns.
@@ -337,7 +337,7 @@ function registerTools(mcpServer: ToolRegistry) {
   );
 
   // Register get terminal output tool
-  mcpServer.tool(
+  mcpBridgeC2V.tool(
     "get_terminal_output",
     dedent`
       Retrieve the output from a specific terminal by its ID.
@@ -359,7 +359,7 @@ function registerTools(mcpServer: ToolRegistry) {
   );
 
   // Register list vscode commands tool
-  mcpServer.tool(
+  mcpBridgeC2V.tool(
     "list_vscode_commands",
     dedent`
       List available VSCode commands with optional filtering.
@@ -380,7 +380,7 @@ function registerTools(mcpServer: ToolRegistry) {
   );
 
   // Register execute vscode command tool
-  mcpServer.tool(
+  mcpBridgeC2V.tool(
     "execute_vscode_command",
     dedent`
       Execute any VSCode command by its command ID.
@@ -402,7 +402,7 @@ function registerTools(mcpServer: ToolRegistry) {
   );
 
   // Register preview url tool
-  mcpServer.tool(
+  mcpBridgeC2V.tool(
     "preview_url",
     dedent`
       Open a URL in VSCode's built-in simple browser, beside the current editor.
@@ -434,11 +434,11 @@ function registerTools(mcpServer: ToolRegistry) {
   );
 
   // Register all external tools
-  registerExternalTools(mcpServer);
+  registerExternalTools(mcpBridgeC2V);
 }
 
-function registerResourceHandlers(mcpServer: McpServer) {
-  mcpServer.server.setRequestHandler(ListResourcesRequestSchema, async () => {
+function registerResourceHandlers(mcpBridgeC2V: McpServer) {
+  mcpBridgeC2V.server.setRequestHandler(ListResourcesRequestSchema, async () => {
     const documents = vscode.workspace.textDocuments;
     const workspaceRoot = vscode.workspace.workspaceFolders?.[0]?.uri.fsPath;
 
@@ -458,7 +458,7 @@ function registerResourceHandlers(mcpServer: McpServer) {
     };
   });
 
-  mcpServer.server.setRequestHandler(ReadResourceRequestSchema, async (request) => {
+  mcpBridgeC2V.server.setRequestHandler(ReadResourceRequestSchema, async (request) => {
     const resourceUrl = new URL(request.params.uri);
     const filePath = resourceUrl.pathname.replace(/^\//, "");
 
