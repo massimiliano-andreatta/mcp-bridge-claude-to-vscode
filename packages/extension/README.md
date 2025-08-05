@@ -5,24 +5,25 @@ A VSCode extension that turns your VSCode into an MCP server, enabling advanced 
 ## Key Features
 
 ### Code Editing Support
-
 - Review proposed code changes from an LLM through diffs, allowing you to accept, reject, or provide feedback.
 - Real-time diagnostic messages (e.g., type errors) sent instantly to the LLM for immediate corrections.
 
-### Terminal Operations
+![Code editing diff](https://storage.googleapis.com/zenn-user-upload/778b7e9ad8c4-20250407.gif)
 
+### Terminal Operations
 - Execute commands within VSCode’s integrated terminal (supports background/foreground execution, and timeout settings).
 
 ### Preview Tools
-
 - Preview URLs directly within VSCode’s built-in browser (e.g., automatically opens browser preview after starting a Vite server).
 
-### Multi-instance Switching
+![Preview tool](https://storage.googleapis.com/zenn-user-upload/8968c9ad3920-20250407.gif)
 
-- Easily switch the MCP server between multiple open VSCode windows.(Just by clicking the status bar item)
+### Multi-instance Switching
+- Easily switch the MCP server between multiple open VSCode windows.
+
+![Instance switching](https://storage.googleapis.com/zenn-user-upload/0a2bc2bee634-20250407.gif)
 
 ### Relay Functionality (Experimental)
-
 - Relay and expose built-in MCP servers introduced in VSCode 1.99 externally.
 - Allows external access to tools provided by other MCP extensions, such as GitHub Copilot.
 
@@ -44,24 +45,24 @@ A VSCode extension that turns your VSCode into an MCP server, enabling advanced 
 
 2. Configure your MCP client:
 
-   - **Using mcp-installer**: You can simply instruct it to "install the mcp-bridge-claude-to-vscode MCP server".
-   - **Other clients like Claude Desktop**: Add the following to your configuration file (`claude_desktop_config.json`):
+    - **Using mcp-installer**: You can simply instruct it to "install the vscode-as-mcp-server MCP server".
+    - **Other clients like Claude Desktop**: Add the following to your configuration file (`claude_desktop_config.json`):
 
-   ```json
-   {
-     "mcpServers": {
-       "mcp-bridge-c2v": {
-         "command": "npx",
-         "args": ["mcp-bridge-claude-to-vscode"]
-       }
-     }
-   }
-   ```
+    ```json
+    {
+      "mcpServers": {
+        "vscode": {
+          "command": "npx",
+          "args": ["vscode-as-mcp-server"]
+        }
+      }
+    }
+    ```
 
 3. Check the MCP server status in the bottom-right VSCode status bar:
 
-   - (Server icon): Server is running
-   - ∅: Click to start the server
+    - ✅: Server is running
+    - ∅: Click to start the server
 
 ![Server status indicator](https://storage.googleapis.com/zenn-user-upload/321704116d4a-20250408.png)
 
