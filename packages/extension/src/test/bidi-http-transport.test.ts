@@ -1,10 +1,10 @@
-import { JSONRPCMessage } from '@modelcontextprotocol/sdk/types.js';
-import * as assert from 'assert';
-import express from 'express';
-import * as http from 'http';
-import * as sinon from 'sinon';
-import * as vscode from 'vscode';
-import { BidiHttpTransport } from '../bidi-http-transport';
+import { JSONRPCMessage } from "@modelcontextprotocol/sdk/types.js";
+import * as assert from "assert";
+import express from "express";
+import * as http from "http";
+import * as sinon from "sinon";
+import * as vscode from "vscode";
+import { BidiHttpTransport } from "../bidi-http-transport";
 
 // テスト用のモックとヘルパー関数
 class MockOutputChannel implements vscode.OutputChannel {
@@ -20,7 +20,7 @@ class MockOutputChannel implements vscode.OutputChannel {
   }
 
   appendLine(value: string): void {
-    this.logs.push(value + '\n');
+    this.logs.push(value + "\n");
   }
 
   clear(): void {
